@@ -57,7 +57,7 @@ public class LoomGradleExtension {
 	public boolean autoGenIDERuns = true;
 	public boolean extractJars = false;
 	public String customManifest = null;
-	public List<Path> mappingPatches = new ArrayList<>();
+	public List<Object> mappingPatches = new ArrayList<>();
 
 	private List<Path> unmappedModsBuilt = new ArrayList<>();
 

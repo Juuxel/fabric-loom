@@ -37,6 +37,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import com.google.common.net.UrlEscapers;
@@ -163,9 +164,11 @@ public class MappingsProvider extends DependencyProvider {
 		DiffMatchPatch dmp = new DiffMatchPatch();
 		String current = String.join("\n", Files.readAllLines(baseTinyMappings));
 
-		for (Path patch : extension.mappingPatches) {
+		for (Object patchFileObj : extension.mappingPatches) {
+			File patchFile = project.file(patchFileObj);
 			// todo: check if it works with multiple patches
-			current = dmp.patchApply(new LinkedList<>(dmp.patchFromText(String.join("\n", Files.readAllLines(patch)))), current)[0].toString();
+			List<DiffMatchPatch.Patch> patches = dmp.patchFromText(String.join("\n", FileUtils.readFileToString(patchFile, StandardCharsets.UTF_8)));
+			current = dmp.patchApply(new LinkedList<>(patches), current)[0].toString();
 		}
 
 		Files.write(baseTinyMappings, Arrays.asList(current.split("\n")), StandardCharsets.UTF_8);
