@@ -13,7 +13,7 @@ targetCompatibility = 1.8
 
 group = 'net.fabricmc'
 archivesBaseName = project.name
-version = '0.2.6-SNAPSHOT'
+version = 'patches-SNAPSHOT'
 
 def build = "local"
 def ENV = System.getenv()
@@ -54,6 +54,9 @@ dependencies {
 
 	// source code remapping
 	implementation ('org.cadixdev:mercury:0.1.0.fabric-SNAPSHOT')
+
+	// mapping patching
+	implementation ('org.bitbucket.cowwoc:diff-match-patch:1.2')
 
 	// Testing
 	testImplementation(gradleTestKit())

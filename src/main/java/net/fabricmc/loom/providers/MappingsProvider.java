@@ -28,17 +28,22 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import com.google.common.net.UrlEscapers;
 import org.apache.commons.io.FileUtils;
 import org.apache.tools.ant.util.StringUtils;
+import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.gradle.api.Project;
 import org.zeroturnaround.zip.FileSource;
 import org.zeroturnaround.zip.ZipEntrySource;
@@ -111,7 +116,7 @@ public class MappingsProvider extends DependencyProvider {
 		tinyMappingsJar = new File(extension.getUserCache(), mappingsJar.getName().replace(".jar", "-" + jarClassifier + ".jar"));
 
 		if (!tinyMappings.exists()) {
-			storeMappings(project, minecraftProvider, mappingsJar.toPath());
+			storeMappings(project, extension, minecraftProvider, mappingsJar.toPath());
 		}
 
 		if (!tinyMappingsJar.exists()) {
@@ -125,11 +130,12 @@ public class MappingsProvider extends DependencyProvider {
 		mappedProvider.provide(dependency, project, extension, postPopulationScheduler);
 	}
 
-	private void storeMappings(Project project, MinecraftProvider minecraftProvider, Path yarnJar) throws IOException {
+	private void storeMappings(Project project, LoomGradleExtension extension, MinecraftProvider minecraftProvider, Path yarnJar) throws IOException {
 		project.getLogger().lifecycle(":extracting " + yarnJar.getFileName());
 
 		try (FileSystem fileSystem = FileSystems.newFileSystem(yarnJar, null)) {
 			extractMappings(fileSystem, baseTinyMappings);
+			patchMappings(project, baseTinyMappings, extension);
 		}
 
 		if (baseMappingsAreV2()) {
@@ -151,6 +157,17 @@ public class MappingsProvider extends DependencyProvider {
 			project.getLogger().lifecycle(":populating field names");
 			suggestFieldNames(minecraftProvider, baseTinyMappings, tinyMappings.toPath());
 		}
+	}
+
+	private void patchMappings(Project project, Path baseTinyMappings, LoomGradleExtension extension) throws IOException {
+		project.getLogger().lifecycle(":patching mappings");
+		DiffMatchPatch dmp = new DiffMatchPatch();
+		String current = String.join("\n", Files.readAllLines(baseTinyMappings));
+		for (Path patch : extension.mappingPatches) {
+			// todo: check if it works with multiple patches
+			current = dmp.patchApply(new LinkedList<>(dmp.patchFromText(String.join("\n", Files.readAllLines(patch)))), current)[0].toString();
+		}
+		Files.write(baseTinyMappings, Arrays.asList(current.split("\n")), StandardCharsets.UTF_8);
 	}
 
 	private boolean baseMappingsAreV2() throws IOException {
