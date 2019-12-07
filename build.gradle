@@ -15,7 +15,7 @@ group = 'net.fabricmc'
 archivesBaseName = project.name
 version = 'patches-SNAPSHOT'
 
-def build = "local"
+def build = "local.1"
 def ENV = System.getenv()
 if (ENV.BUILD_NUMBER) {
 	build = "jenkins #${ENV.BUILD_NUMBER}"

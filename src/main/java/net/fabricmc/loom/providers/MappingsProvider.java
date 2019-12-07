@@ -160,18 +160,23 @@ public class MappingsProvider extends DependencyProvider {
 	}
 
 	private void patchMappings(Project project, Path baseTinyMappings, LoomGradleExtension extension) throws IOException {
-		project.getLogger().lifecycle(":patching mappings");
-		DiffMatchPatch dmp = new DiffMatchPatch();
-		String current = String.join("\n", Files.readAllLines(baseTinyMappings));
+		try {
+			project.getLogger().lifecycle(":patching mappings");
+			DiffMatchPatch dmp = new DiffMatchPatch();
+			String current = String.join("\n", Files.readAllLines(baseTinyMappings));
 
-		for (Object patchFileObj : extension.mappingPatches) {
-			File patchFile = project.file(patchFileObj);
-			// todo: check if it works with multiple patches
-			List<DiffMatchPatch.Patch> patches = dmp.patchFromText(String.join("\n", FileUtils.readFileToString(patchFile, StandardCharsets.UTF_8)));
-			current = dmp.patchApply(new LinkedList<>(patches), current)[0].toString();
+			for (Object patchFileObj : extension.mappingPatches) {
+				File patchFile = project.file(patchFileObj);
+				// todo: check if it works with multiple patches
+				List<DiffMatchPatch.Patch> patches = dmp.patchFromText(String.join("\n", FileUtils.readFileToString(patchFile, StandardCharsets.UTF_8)));
+				current = dmp.patchApply(new LinkedList<>(patches), current)[0].toString();
+			}
+
+			Files.write(baseTinyMappings, Arrays.asList(current.split("\n")), StandardCharsets.UTF_8);
+		} catch (RuntimeException e) {
+			project.getLogger().error("Failed to patch mappings!", e);
+			throw e;
 		}
-
-		Files.write(baseTinyMappings, Arrays.asList(current.split("\n")), StandardCharsets.UTF_8);
 	}
 
 	private boolean baseMappingsAreV2() throws IOException {
