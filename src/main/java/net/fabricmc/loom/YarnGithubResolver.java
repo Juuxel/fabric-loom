@@ -7,9 +7,7 @@
  */
 package net.fabricmc.loom;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -22,7 +20,20 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.zip.GZIPOutputStream;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import cuchaz.enigma.command.ComposeMappingsCommand;
+import cuchaz.enigma.command.MappingCommandsUtil;
+import cuchaz.enigma.throwables.MappingParseException;
+import cuchaz.enigma.translation.mapping.EntryMapping;
+import cuchaz.enigma.translation.mapping.MappingFileNameFormat;
+import cuchaz.enigma.translation.mapping.MappingSaveParameters;
+import cuchaz.enigma.translation.mapping.tree.EntryTree;
+import net.fabricmc.stitch.commands.CommandMergeTiny;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
@@ -157,6 +168,157 @@ public class YarnGithubResolver {
 		DownloadSpec spec = new DownloadSpec(repo + '/' + commit);
 		action.execute(spec);
 		return createFrom(spec, String.format(DOWNLOAD_URL, repo, commit));
+	}
+
+	public Dependency mojmap(String version) {
+		return mojmap(version, spec -> {});
+	}
+
+	public Dependency mojmap(String version, Action<MojmapSpec> action) {
+		MojmapSpec spec = new MojmapSpec("com.mojang", "obfuscation-maps", version);
+		action.execute(spec);
+		Path destination = globalCache.resolve("mojmap").resolve(version + ".gz");
+		createDirectory(destination.getParent());
+
+		return new MojmapDependency(spec, version, destination);
+	}
+
+	public static class MojmapSpec {
+		private String group;
+		private String name;
+		private String version;
+
+		public MojmapSpec(String group, String name, String version) {
+			this.group = group;
+			this.name = name;
+			this.version = version;
+		}
+
+		public String getGroup() {
+			return group;
+		}
+
+		public void setGroup(String group) {
+			this.group = group;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		public String getVersion() {
+			return version;
+		}
+
+		public void setVersion(String version) {
+			this.version = version;
+		}
+	}
+
+	public class MojmapDependency extends ComputedDependency {
+		private final MojmapSpec spec;
+		private final String version;
+		private final Path destination;
+
+		public MojmapDependency(MojmapSpec spec, String version, Path destination) {
+			super(spec.getGroup(), spec.getName(), spec.getVersion());
+			this.spec = spec;
+			this.version = version;
+			this.destination = destination;
+		}
+
+		@Override
+		public Dependency copy() {
+			return new MojmapDependency(spec, version, destination);
+		}
+
+		@Override
+		protected FileCollection makeFiles() {
+			return fileFactory.apply(destination);
+		}
+
+		@Override
+		public Set<File> resolve() {
+			if (Files.notExists(destination.getParent())) throw new IllegalStateException("Dependency on mojmap " + version + " lacks a destination");
+
+			try {
+				File manifestFile = destination.resolveSibling("version_manifest.json").toFile();
+				DownloadUtil.downloadIfChanged(new URL("https://launchermeta.mojang.com/mc/game/version_manifest.json"), manifestFile, logger, true);
+
+				Gson gson = new Gson();
+				JsonObject versionManifest;
+				try (FileReader reader = new FileReader(manifestFile)) {
+					versionManifest = gson.fromJson(reader, JsonObject.class);
+				}
+				JsonArray versions = versionManifest.getAsJsonArray("versions");
+				JsonObject versionObject = null;
+				for (JsonElement it : versions) {
+					if (it instanceof JsonObject && version.equals(it.getAsJsonObject().get("id").getAsString())) {
+						versionObject = it.getAsJsonObject();
+						break;
+					}
+				}
+				if (versionObject == null) throw new IllegalArgumentException("Unknown Mojmap version: " + version);
+
+				File specificManifestFile = destination.resolveSibling(version + ".json").toFile();
+				DownloadUtil.downloadIfChanged(
+						new URL(versionObject.get("url").getAsString()),
+						specificManifestFile,
+						logger, true
+				);
+
+				JsonObject specificManifest;
+				try (FileReader reader = new FileReader(specificManifestFile)) {
+					specificManifest = gson.fromJson(reader, JsonObject.class);
+				}
+				URL mojmapUrl = new URL(
+						specificManifest.getAsJsonObject("downloads")
+								.getAsJsonObject("client_mappings")
+								.get("url")
+								.getAsString()
+				);
+				Path rawMojmapFile = destination.resolveSibling(version + ".txt");
+				Path mojmapTinyFile = destination.resolveSibling(version + "_incomplete.tiny");
+				DownloadUtil.downloadIfChanged(mojmapUrl, rawMojmapFile.toFile(), logger, true);
+
+				File intermediaryFile = destination.resolveSibling(version + "_intermediary.tiny").toFile();
+				URL intermediaryUrl = new URL("https://raw.githubusercontent.com/FabricMC/intermediary/master/mappings/" + version + ".tiny");
+				if (!intermediaryFile.exists()) {
+					try (InputStream in = intermediaryUrl.openStream()) {
+						Files.copy(in, intermediaryFile.toPath());
+					}
+				}
+
+				MappingSaveParameters saveParameters = new MappingSaveParameters(MappingFileNameFormat.BY_DEOBF);
+				EntryTree<EntryMapping> mappings = MappingCommandsUtil.read("proguard", rawMojmapFile, saveParameters);
+				MappingCommandsUtil.write(mappings, "tiny:official:named", mojmapTinyFile, saveParameters);
+				File finalMappingsFile = destination.resolveSibling(version + "-final.tiny").toFile();
+				new CommandMergeTiny().run(mojmapTinyFile.toFile(), intermediaryFile, finalMappingsFile, "official");
+
+				try (GZIPOutputStream out = new GZIPOutputStream(Files.newOutputStream(destination))) {
+					Files.copy(finalMappingsFile.toPath(), out);
+				}
+
+				return Collections.singleton(destination.toFile());
+			} catch (MalformedURLException e) {
+				throw new IllegalArgumentException("Invalid URL", e);
+			} catch (IOException e) {
+				throw new RuntimeException("Unable to download a file for " + version + " from Mojang's servers", e);
+			} catch (MappingParseException e) {
+				throw new RuntimeException("Unable to parse mappings", e);
+			}
+		}
+
+		@Override
+		public boolean contentEquals(Dependency dependency) {
+			if (dependency == this) return true;
+			if (!(dependency instanceof MojmapDependency)) return false;
+			return Objects.equals(((MojmapDependency) dependency).version, version);
+		}
 	}
 
 	public class GithubDependency extends ComputedDependency {

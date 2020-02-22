@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import org.gradle.api.Project;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.model.ObjectFactory;
 
 /** This is used to bridge the gap over large Gradle API changes. */
 public class GradleSupport {
@@ -77,8 +78,10 @@ public class GradleSupport {
 
 	public static RegularFileProperty getFileProperty(Project project) {
 		try {
-			return project.getObjects().fileProperty();
-		} catch (NoSuchMethodError e) {
+			Method method = ObjectFactory.class.getMethod("fileProperty");
+			assert method.isAccessible();
+			return (RegularFileProperty) method.invoke(project.getObjects());
+		} catch (ReflectiveOperationException | ClassCastException e) {
 			assert majorGradleVersion(project) < 5;
 		}
 
