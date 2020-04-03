@@ -1,175 +1,179 @@
 /*
- * This file is part of fabric-loom, licensed under the MIT License (MIT).
+ * Copyright 2019, 2020 Chocohead
  *
- * Copyright (c) 2019 Chocohead
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 package net.fabricmc.loom.providers.mappings;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
+import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import com.google.common.collect.Iterables;
 
 import net.fabricmc.stitch.util.Pair;
 
 import net.fabricmc.loom.providers.mappings.MappingBlob.Mapping;
 import net.fabricmc.loom.providers.mappings.MappingBlob.Mapping.Field;
 import net.fabricmc.loom.providers.mappings.MappingBlob.Mapping.Method;
+import net.fabricmc.loom.providers.mappings.MappingBlob.Mapping.Method.Arg;
 import net.fabricmc.loom.providers.mappings.MappingSplat.CombinedMapping;
-import net.fabricmc.loom.providers.mappings.MappingSplat.CombinedMapping.ArgOnlyMethod;
 import net.fabricmc.loom.providers.mappings.MappingSplat.CombinedMapping.CombinedField;
 import net.fabricmc.loom.providers.mappings.MappingSplat.CombinedMapping.CombinedMethod;
+import net.fabricmc.loom.util.ThrowingIntObjConsumer;
 
 public class MappingSplat implements Iterable<CombinedMapping> {
 	public static class CombinedMapping {
 		public static class CombinedField {
 			public final String from, fallback, to;
 			public final String fromDesc, fallbackDesc, toDesc;
+			public final String comment;
 
-			public CombinedField(String from, String fromDesc, String fallback, String fallbackDesc, String to, String toDesc) {
+			public CombinedField(String from, String fromDesc, String fallback, String fallbackDesc, String to, String toDesc, String comment) {
 				this.from = from;
 				this.fromDesc = fromDesc;
 				this.fallback = fallback;
 				this.fallbackDesc = fallbackDesc;
 				this.to = to;
 				this.toDesc = toDesc;
+				this.comment = comment;
+			}
+
+			public boolean hasNameChange() {
+				return !from.equals(fallback);
+			}
+
+			public boolean hasComment() {
+				return comment != null;
 			}
 		}
 		public static class CombinedMethod extends CombinedField {
-			private final String[] args;
+			private final Arg[] args;
 
-			public CombinedMethod(String from, String fromDesc, String fallback, String fallbackDesc, String to, String toDesc, String[] args) {
-				super(from, fromDesc, fallback, fallbackDesc, to, toDesc);
+			CombinedMethod(String name, String fromDesc, String fallbackDesc, String toDesc, String comment, Arg[] args) {
+				this(name, fromDesc, name, fallbackDesc, name, toDesc, comment, args);
+			}
 
-				this.args = args != null ? args : new String[0];
+			public CombinedMethod(String from, String fromDesc, String fallback, String fallbackDesc, String to, String toDesc, String comment, Arg[] args) {
+				super(from, fromDesc, fallback, fallbackDesc, to, toDesc, comment);
+
+				this.args = args != null ? args : new Arg[0];
+			}
+
+			public boolean hasAnyComments() {
+				return hasComment() || hasArgComments();
 			}
 
 			public boolean hasArgs() {
 				return args.length > 0;
 			}
 
-			public String arg(int index) {
-				return args.length > index ? args[index] : null;
+			public boolean hasArgNames() {
+				return Arrays.stream(args).filter(Objects::nonNull).anyMatch(arg -> arg.name != null);
 			}
 
-			public Iterable<String> namedArgs() {
-				if (!hasArgs()) {
-					return () -> Collections.emptyIterator();
-				} else {
-					return () -> new Iterator<String>() {
-						private int head = args.length - 1;
+			public boolean hasArgComments() {
+				return Arrays.stream(args).filter(Objects::nonNull).anyMatch(arg -> arg.comment != null);
+			}
 
-						@Override
-						public boolean hasNext() {
-							return head >= 0;
-						}
+			public String arg(int index) {
+				return args.length > index && args[index] != null ? args[index].name : null;
+			}
 
-						@Override
-						public String next() {
-							String next = head + ": " + args[head--];
-							while (hasNext() && args[head] == null) head--;
-							return next;
-						}
-					};
+			public String argComment(int index) {
+				return args.length > index && args[index] != null ? args[index].comment : null;
+			}
+
+			public <T extends Throwable> void iterateArgs(ThrowingIntObjConsumer<String, T> argConsumer) throws T {
+				for (int i = args.length - 1; i >= 0; i--) {
+					if (args[i] != null && args[i].name != null) argConsumer.accept(i, args[i].name);
+				}
+			}
+
+			public <T extends Throwable> void iterateArgComments(ThrowingIntObjConsumer<String, T> argCommentConsumer) throws T {
+				for (int i = 0; i < args.length; i++) {
+					if (args[i] != null && args[i].comment != null) argCommentConsumer.accept(i, args[i].comment);
 				}
 			}
 		}
-		public static class ArgOnlyMethod {
-			public final String from, fromDesc;
-			private final String[] args;
 
-			ArgOnlyMethod(CombinedMethod method) {
-				this(method.from, method.fromDesc, method.args);
-			}
-
-			public ArgOnlyMethod(String from, String fromDesc, String[] args) {
-				this.from = from;
-				this.fromDesc = fromDesc;
-				this.args = args;
-			}
-
-			public String arg(int index) {
-				return args.length > index ? args[index] : null;
-			}
-
-			public Iterable<String> namedArgs() {
-				return () -> new Iterator<String>() {
-					private int head = args.length - 1;
-
-					@Override
-					public boolean hasNext() {
-						return head >= 0;
-					}
-
-					@Override
-					public String next() {
-						String next = head + ": " + args[head--];
-						while (hasNext() && args[head] == null) head--;
-						return next;
-					}
-				};
-			}
-		}
-
-		public final String from, fallback, to;
+		public final String from, fallback, to, comment;
 		final Map<String, CombinedMethod> methods = new HashMap<>();
-		final Map<String, ArgOnlyMethod> bonusArgs = new HashMap<>();
 		final Map<String, CombinedField> fields = new HashMap<>();
 
-		public CombinedMapping(String from, String fallback, String to) {
+		public CombinedMapping(String from, String fallback, String to, String comment) {
 			this.from = from;
 			this.fallback = fallback;
 			this.to = to;
+			this.comment = comment;
+		}
+
+		public boolean hasNameChange() {
+			return !from.equals(fallback);
+		}
+
+		public boolean hasComment() {
+			return comment != null;
+		}
+
+		public boolean hasAnyComments() {
+			if (hasComment()) return true;
+
+			for (CombinedMethod method : methods()) {
+				if (method.hasAnyComments()) {
+					return true;
+				}
+			}
+
+			for (CombinedField field : fields()) {
+				if (field.hasComment()) {
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		public Iterable<CombinedMethod> methods() {
 			return methods.values();
 		}
 
-		public Iterable<ArgOnlyMethod> bonusArgs() {
-			return bonusArgs.values();
+		Stream<CombinedMethod> methodStream() {
+			return methods.values().stream();
 		}
 
-		public Iterable<ArgOnlyMethod> allArgs() {
-			Set<ArgOnlyMethod> args = new HashSet<>(bonusArgs.values());
-			methods.values().stream().filter(CombinedMethod::hasArgs).map(ArgOnlyMethod::new).forEach(args::add);
-			return Collections.unmodifiableSet(args);
+		public Iterable<CombinedMethod> methodsWithNames() {
+			return Iterables.filter(methods(), CombinedMethod::hasNameChange);
+		}
+
+		public Iterable<CombinedMethod> methodsWithArgs() {
+			return Iterables.filter(methods(), CombinedMethod::hasArgs);
 		}
 
 		public Iterable<CombinedField> fields() {
 			return fields.values();
 		}
+
+		public Iterable<CombinedField> fieldsWithNames() {
+			return Iterables.filter(fields(), CombinedField::hasNameChange);
+		}
 	}
 
 	private final Map<String, CombinedMapping> mappings = new HashMap<>();
 
+	/** Note: {@code mappings} will get mutated to gain any classes or members it lacks relative to {@code fallback} */
 	public MappingSplat(MappingBlob mappings, MappingBlob fallback) {
 		UnaryOperator<String> fallbackRemapper = className -> {
 			String triedMapping = fallback.tryMapName(className);
@@ -185,28 +189,30 @@ public class MappingSplat implements Iterable<CombinedMapping> {
 			String notch = mapping.from;
 			Mapping other = mappings.get(notch);
 
-			String inter = either(mapping.to, notch);
+			String inter = mapping.toOr(notch);
 			String name = findName(other.to, inter, notch, mappings);
 			assert !inter.equals(notch) || name.equals(notch);
+			String comment = (other.comment().isPresent() ? other : mapping).comment().orElse(null);
 
-			CombinedMapping combined = new CombinedMapping(notch, inter, name);
+			CombinedMapping combined = new CombinedMapping(notch, inter, name, comment);
 			this.mappings.put(notch, combined);
 
 			for (Method method : mapping.methods()) {
 				Method otherMethod = other.method(method);
 				notch = method.fromName;
+				inter = method.nameOr(notch);
 
 				if (notch.charAt(0) == '<') {
-					name = inter = notch;
+					//Constructors (and static blocks) shouldn't appear in fallback from intermediary mappings not assigning constructor names
+					throw new AssertionError(String.format("Tried to map special method in %s (%s): %s -> %s -> %s", mapping.from, name, notch, inter, otherMethod.nameOr(inter)));
 				} else {
-					inter = method.nameOr(notch);
 					name = otherMethod.nameOr(inter);
 				}
 				String interDesc = makeDesc(method, fallbackRemapper);
 				String nameDesc = makeDesc(otherMethod, remapper);
-				String[] args = either(otherMethod.args(), method.args());
+				comment = (otherMethod.comment().isPresent() ? otherMethod : method).comment().orElse(null);
 
-				CombinedMethod combinedMethod = new CombinedMethod(notch, method.fromDesc, inter, interDesc, name, nameDesc, args);
+				CombinedMethod combinedMethod = new CombinedMethod(notch, method.fromDesc, inter, interDesc, name, nameDesc, comment, otherMethod.extendArgs(method));
 				combined.methods.put(notch + method.fromDesc, combinedMethod);
 			}
 
@@ -218,8 +224,9 @@ public class MappingSplat implements Iterable<CombinedMapping> {
 				String interDesc = makeDesc(field, fallbackRemapper);
 				name = otherField.nameOr(inter);
 				String nameDesc = makeDesc(otherField, remapper);
+				comment = (otherField.comment().isPresent() ? otherField : field).comment().orElse(null);
 
-				CombinedField combinedField = new CombinedField(notch, field.fromDesc, inter, interDesc, name, nameDesc);
+				CombinedField combinedField = new CombinedField(notch, field.fromDesc, inter, interDesc, name, nameDesc, comment);
 				combined.fields.put(notch + ";;" + field.fromDesc, combinedField);
 			}
 		}
@@ -241,26 +248,21 @@ public class MappingSplat implements Iterable<CombinedMapping> {
 				if (other.hasMethod(method)) continue;
 				notch = method.fromName;
 
-				if (notch.charAt(0) == '<') {
-					//Args for constructors (and static blocks) won't appear in fallback from intermediary mappings not assigning constructor names
+				if (notch.charAt(0) != '<' && !notch.equals(method.nameOr(notch))) {
+					//Changing Notch names without intermediaries to back it up is not cross-version safe and shouldn't be done
+					//throw new IllegalStateException("Extra mappings missing from fallback! Unable to find " + mapping.from + '#' + method.fromName + method.fromDesc + " (" + mapping.to + '#' + method.name() + ')');
+
+					//Yarn sometimes does however, so we'll just the cases where it does and not use them
+					yarnOnlyMappings.computeIfAbsent(mapping.from, k -> Pair.of(mapping.to, new HashMap<>())).getRight().put(method.fromName + method.fromDesc, method.name());
+				}
+
+				if (method.comment().isPresent() || method.hasArgs()) {
 					String interDesc = remapDesc(method.fromDesc, fallbackRemapper);
 					String nameDesc = makeDesc(method, remapper);
+					String comment = method.comment().orElse(null);
 
-					CombinedMethod combinedMethod = new CombinedMethod(notch, method.fromDesc, notch, interDesc, notch, nameDesc, method.args());
-					combined.methods.put(notch + method.fromDesc, combinedMethod);
-				} else {
-					if (!notch.equals(method.nameOr(notch))) {
-						//Changing Notch names without intermediaries to back it up is not cross-version safe and shouldn't be done
-						//throw new IllegalStateException("Extra mappings missing from fallback! Unable to find " + mapping.from + '#' + method.fromName + method.fromDesc + " (" + mapping.to + '#' + method.name() + ')');
-
-						//Yarn sometimes does however, so we'll just the cases where it does and not use them
-						yarnOnlyMappings.computeIfAbsent(mapping.from, k -> Pair.of(mapping.to, new HashMap<>())).getRight().put(method.fromName + method.fromDesc, method.name());
-					}
-
-					if (method.hasArgs()) {
-						ArgOnlyMethod bonusMethod = new ArgOnlyMethod(notch, method.fromDesc, method.args());
-						combined.bonusArgs.put(notch + method.fromDesc, bonusMethod);
-					}
+					CombinedMethod bonusMethod = new CombinedMethod(notch, method.fromDesc, interDesc, nameDesc, comment, method.cloneArgs());
+					combined.methods.put(notch + method.fromDesc, bonusMethod);
 				}
 			}
 
@@ -306,22 +308,20 @@ public class MappingSplat implements Iterable<CombinedMapping> {
 		return mappings.values().iterator();
 	}
 
-	public boolean hasArgs() {
-		for (CombinedMapping mapping : mappings.values()) {
-			if (!mapping.bonusArgs.isEmpty()) return true;
-
-			for (CombinedMethod method : mapping.methods()) {
-				if (method.hasArgs()) {
-					return true;
-				}
-			}
-		}
-
-		return false;
+	public boolean hasComments() {
+		return mappings.values().stream().anyMatch(CombinedMapping::hasAnyComments);
 	}
 
-	private static <T> T either(T prefered, T other) {
-		return prefered != null ? prefered : other;
+	public boolean hasArgs() {
+		return mappings.values().stream().flatMap(CombinedMapping::methodStream).anyMatch(CombinedMethod::hasArgs);
+	}
+
+	public boolean hasArgNames() {
+		return mappings.values().stream().flatMap(CombinedMapping::methodStream).anyMatch(CombinedMethod::hasArgNames);
+	}
+
+	public boolean hasArgComments() {
+		return mappings.values().stream().flatMap(CombinedMapping::methodStream).anyMatch(CombinedMethod::hasArgComments);
 	}
 
 	private static String findName(String name, String inter, String notch, MappingBlob mappings) {

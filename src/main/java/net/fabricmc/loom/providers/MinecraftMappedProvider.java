@@ -117,8 +117,8 @@ public class MinecraftMappedProvider extends LogicalDependencyProvider {
             throw new RuntimeException("mapped jar not found");
         }
 
-        project.getDependencies().add(Constants.MINECRAFT_NAMED, project.getDependencies().module("net.minecraft:minecraft:" + mappedJar));
-        project.getDependencies().add(Constants.MINECRAFT_INTERMEDIARY, project.getDependencies().module("net.minecraft:minecraft:" + intermediaryJar));
+        addDependency("net.minecraft:minecraft:" + mappedJar, project, Constants.MINECRAFT_NAMED);
+        addDependency("net.minecraft:minecraft:" + intermediaryJar, project, Constants.MINECRAFT_INTERMEDIARY);
     }
 
     public Collection<File> getMapperPaths() {

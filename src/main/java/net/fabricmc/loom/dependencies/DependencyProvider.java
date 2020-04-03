@@ -61,15 +61,15 @@ public abstract class DependencyProvider {
 		return provider;
 	}
 
-	protected void addDependency(Object object, Project project) {
-		addDependency(object, project, "compile");
+	protected void addDependency(String module, Project project, String target) {
+		addDependency(project.getDependencies().module(module), project, target);
 	}
 
-	protected void addDependency(Object object, Project project, String target) {
-		if (object instanceof File) {
-			object = project.files(object);
-		}
+	protected void addDependency(File file, Project project, String target) {
+		addDependency(project.files(file), project, target);
+	}
 
+	private void addDependency(Object object, Project project, String target) {
 		project.getDependencies().add(target, object);
 	}
 }

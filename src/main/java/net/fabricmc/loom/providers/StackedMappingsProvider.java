@@ -44,25 +44,25 @@ public class StackedMappingsProvider extends PhysicalDependencyProvider {
 		private List<String> namespaces;
 
 		public MappingFile(File origin, String name, String version, String minecraftVersion, MappingType type) {
+			this(origin, name, version, minecraftVersion, type, null);
+			assert type != MappingType.TinyV1 && type != MappingType.TinyV2;
+		}
+
+		MappingFile(File origin, String name, String version, String minecraftVersion, MappingType type, List<String> namespaces) {
 			this.origin = origin;
 			this.name = name;
 			this.version = version;
 			this.minecraftVersion = minecraftVersion;
 			this.type = type;
+			this.namespaces = namespaces;
 		}
 
 		private MappingFile withEnlightening(MappingType type, List<String> namespaces) {
-			MappingFile out = new MappingFile(origin, name, version, minecraftVersion, type);
-			out.namespaces = namespaces;
-			return out;
+			return new MappingFile(origin, name, version, minecraftVersion, type, namespaces);
 		}
 
 		public MappingFile enlighten() throws IOException {
 			switch (type) {
-			case TinyV1:
-			case TinyV2:
-				assert namespaces != null;
-
 			case Tiny:
 				try (FileSystem fileSystem = FileSystems.newFileSystem(origin.toPath(), null);
 						BufferedReader reader = Files.newBufferedReader(fileSystem.getPath("mappings/mappings.tiny"))) {
@@ -79,6 +79,10 @@ public class StackedMappingsProvider extends PhysicalDependencyProvider {
 						throw new IOException("Unable to guess mapping version from " + header + " in " + origin);
 					}
 				}
+
+			case TinyV1:
+			case TinyV2:
+				assert namespaces != null;
 
 			default:
 				return this;

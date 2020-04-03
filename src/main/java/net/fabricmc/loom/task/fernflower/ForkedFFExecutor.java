@@ -37,6 +37,8 @@ import org.jetbrains.java.decompiler.main.Fernflower;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.extern.IResultSaver;
 
+import net.fabricmc.fernflower.api.IFabricJavadocProvider;
+
 /**
  * Entry point for Forked FernFlower task.
  * Takes one parameter, a single file, each line is treated as command line input.
@@ -107,8 +109,9 @@ public class ForkedFFExecutor {
 
 		Objects.requireNonNull(input, "Input not set.");
 		Objects.requireNonNull(output, "Output not set.");
-		//Objects.requireNonNull(mappings, "Mappings not set.");
+		Objects.requireNonNull(mappings, "Mappings not set.");
 
+		if (mappings.exists()) options.put(IFabricJavadocProvider.PROPERTY_NAME, new JavadocProvider(mappings));
 		runFF(options, libraries, input, output, lineMap, stdOut, errOut);
 	}
 

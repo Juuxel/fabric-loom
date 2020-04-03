@@ -69,7 +69,7 @@ public class MinecraftLibraryProvider extends LogicalDependencyProvider {
 					isClientOnly = true;
 				} */
 
-				project.getDependencies().add(Constants.MINECRAFT_DEPENDENCIES, project.getDependencies().module(library.getArtifactName()));
+				addDependency(library.getArtifactName(), project, Constants.MINECRAFT_DEPENDENCIES);
 			}
 		}
 

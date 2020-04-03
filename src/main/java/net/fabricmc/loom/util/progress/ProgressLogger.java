@@ -24,32 +24,30 @@
 
 package net.fabricmc.loom.util.progress;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.gradle.api.Project;
+import org.gradle.api.logging.Logger;
 
 /**
  * Wrapper to ProgressLogger internal API.
  */
 public class ProgressLogger {
-	private final Object logger;
-	private final Method getDescription, setDescription, getShortDescription, setShortDescription, getLoggingHeader, setLoggingHeader, start, started, startedArg, progress, completed, completedArg;
+	private final Logger logger;
+	private final Object logFactory;
+	private final Method getDescription, setDescription, start, started, startedArg, progress, completed, completedArg;
 
-	private ProgressLogger(Object logger) {
+	private ProgressLogger(Logger logger, Object logFactory) {
 		this.logger = logger;
+		this.logFactory = logFactory;
 		this.getDescription = getMethod("getDescription");
 		this.setDescription = getMethod("setDescription", String.class);
-		this.getShortDescription = getMethod("getShortDescription");
-		this.setShortDescription = getMethod("setShortDescription", String.class);
-		this.getLoggingHeader = getMethod("getLoggingHeader");
-		this.setLoggingHeader = getMethod("setLoggingHeader", String.class);
 		this.start = getMethod("start", String.class, String.class);
 		this.started = getMethod("started");
 		this.startedArg = getMethod("started", String.class);
 		this.progress = getMethod("progress", String.class);
 		this.completed = getMethod("completed");
-		this.completedArg = getMethod("completed", String.class);
+		this.completedArg = getMethod("completed", String.class, boolean.class);
 	}
 
 	private static Class<?> getFactoryClass() {
@@ -62,7 +60,7 @@ public class ProgressLogger {
 			//prior to Gradle 2.14
 			try {
 				progressLoggerFactoryClass = Class.forName("org.gradle.logging.ProgressLoggerFactory");
-			} catch (ClassNotFoundException e1) {
+			} catch (ClassNotFoundException oldE) {
 				// Unsupported Gradle version
 			}
 		}
@@ -71,11 +69,11 @@ public class ProgressLogger {
 	}
 
 	private Method getMethod(String methodName, Class<?>... args) {
-		if (logger != null) {
+		if (logFactory != null) {
 			try {
-				return logger.getClass().getMethod(methodName, args);
-			} catch (NoSuchMethodException ignored) {
-				//Nope
+				return logFactory.getClass().getMethod(methodName, args);
+			} catch (NoSuchMethodException e) {
+				logger.warn("Error reflecting ProgressLoggerFactory#" + methodName, e);
 			}
 		}
 
@@ -83,12 +81,12 @@ public class ProgressLogger {
 	}
 
 	private Object invoke(Method method, Object... args) {
-		if (logger != null) {
+		if (logFactory != null) {
 			try {
 				method.setAccessible(true);
-				return method.invoke(logger, args);
-			} catch (IllegalAccessException | InvocationTargetException ignored) {
-				//Nope
+				return method.invoke(logFactory, args);
+			} catch (ReflectiveOperationException e) {
+				logger.warn("Error reflecting ProgressLoggerFactory#" + method, e);
 			}
 		}
 
@@ -109,10 +107,10 @@ public class ProgressLogger {
 			Method get = serviceFactory.getClass().getMethod("get", Class.class);
 			Object progressLoggerFactory = get.invoke(serviceFactory, getFactoryClass());
 			Method newOperation = progressLoggerFactory.getClass().getMethod("newOperation", String.class);
-			return new ProgressLogger(newOperation.invoke(progressLoggerFactory, category));
+			return new ProgressLogger(project.getLogger(), newOperation.invoke(progressLoggerFactory, category));
 		} catch (Exception e) {
 			project.getLogger().error("Unable to get progress logger. Download progress will not be displayed.");
-			return new ProgressLogger(null);
+			return new ProgressLogger(project.getLogger(), null);
 		}
 	}
 
@@ -134,50 +132,6 @@ public class ProgressLogger {
 	 */
 	public ProgressLogger setDescription(String description) {
 		invoke(setDescription, description);
-		return this;
-	}
-
-	/**
-	 * Returns the short description of the operation. This is used in place of the full description when display space is limited.
-	 *
-	 * @return The short description, must not be empty.
-	 */
-	public String getShortDescription() {
-		return (String) invoke(getShortDescription);
-	}
-
-	/**
-	 * Sets the short description of the operation. This is used in place of the full description when display space is limited.
-	 *
-	 * <p>This must be called before {@link #started()}
-	 *
-	 * @param description The short description.
-	 */
-	public ProgressLogger setShortDescription(String description) {
-		invoke(setShortDescription, description);
-		return this;
-	}
-
-	/**
-	 * Returns the logging header for the operation. This is logged before any other log messages for this operation are logged. It is usually
-	 * also logged at the end of the operation, along with the final status message. Defaults to null.
-	 *
-	 * <p>If not specified, no logging header is logged.
-	 *
-	 * @return The logging header, possibly empty.
-	 */
-	public String getLoggingHeader() {
-		return (String) invoke(getLoggingHeader);
-	}
-
-	/**
-	 * Sets the logging header for the operation. This is logged before any other log messages for this operation are logged. It is usually
-	 * also logged at the end of the operation, along with the final status message. Defaults to null.
-	 *
-	 * @param header The header. May be empty or null.
-	 */
-	public ProgressLogger setLoggingHeader(String header) {
-		invoke(setLoggingHeader, header);
 		return this;
 	}
 
@@ -227,8 +181,9 @@ public class ProgressLogger {
 	 * Logs the completion of the operation, with a final status. This is generally logged along with the description.
 	 *
 	 * @param status The final status message. Can be null or empty.
+	 * @param failed Whether the operation failed.
 	 */
-	public void completed(String status) {
-		invoke(completedArg, status);
+	public void completed(String status, boolean failed) {
+		invoke(completedArg, status, failed);
 	}
 }

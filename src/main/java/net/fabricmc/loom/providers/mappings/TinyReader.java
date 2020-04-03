@@ -27,14 +27,25 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.UnaryOperator;
 import java.util.zip.GZIPInputStream;
 
+import net.fabricmc.mappings.TinyV2Visitor;
+import net.fabricmc.mappings.visitor.ClassVisitor;
+import net.fabricmc.mappings.visitor.FieldVisitor;
+import net.fabricmc.mappings.visitor.LocalVisitor;
+import net.fabricmc.mappings.visitor.MappingsVisitor;
+import net.fabricmc.mappings.visitor.MethodVisitor;
+import net.fabricmc.mappings.visitor.ParameterVisitor;
 import net.fabricmc.tinyremapper.TinyUtils;
 
 public class TinyReader {
@@ -71,17 +82,101 @@ public class TinyReader {
 
 	public static void readTiny(Path file, String from, String to, IMappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = getMappingReader(file)) {
+			Map<String, String> reverser = new HashMap<>();
+
 			TinyUtils.read(reader, from, to, (classFrom, name) -> {
 				mappingAcceptor.acceptClass(classFrom, name);
+				reverser.put(name, classFrom);
 			}, (fieldFrom, name) -> {
 				mappingAcceptor.acceptField(fieldFrom.owner, fieldFrom.name, fieldFrom.desc, null, name, null);
 			}, (methodFrom, name) -> {
 				mappingAcceptor.acceptMethod(methodFrom.owner, methodFrom.name, methodFrom.desc, null, name, null);
 			}, (methodFrom, args) -> {
-				for (int i = args.length - 1; i > 0; i--) {
+				for (int i = args.length - 1; i >= 0; i--) {
 					if (args[i] != null) {
-						mappingAcceptor.acceptMethodArg(methodFrom.owner, methodFrom.name, methodFrom.desc, i, args[i]);
+						mappingAcceptor.acceptMethodArg(reverser.getOrDefault(methodFrom.owner, methodFrom.owner), methodFrom.name, methodFrom.desc, i, args[i]);
 					}
+				}
+			});
+		}
+	}
+
+	public static void readComments(Path file, String from, UnaryOperator<String> classRemapper, IMappingAcceptor mappingAcceptor) throws IOException {
+		try (Reader in = new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8)) {
+			TinyV2Visitor.read(in, new MappingsVisitor() {
+				private int index;
+
+				@Override
+				public void visitVersion(int major, int minor) {
+					assert major == 2;
+				}
+
+				@Override
+				public void visitProperty(String name) {
+				}
+
+				@Override
+				public void visitProperty(String name, String value) {
+				}
+
+				@Override
+				public void visitNamespaces(String... namespaces) {
+					index = Arrays.asList(namespaces).indexOf(from);
+					if (index < 0) throw new IllegalArgumentException("Provided namespace " + from + " was not in " + file);
+				}
+
+				@Override
+				public ClassVisitor visitClass(long offset, String[] names) {
+					return new ClassVisitor() {
+						private final String className = names[index];
+
+						@Override
+						public MethodVisitor visitMethod(long offset, String[] names, String descriptor) {
+							return new MethodVisitor() {
+								private final String name = names[index];
+								private final String desc = index == 0 ? descriptor : MappingSplat.remapDesc(descriptor, classRemapper);
+
+								@Override
+								public ParameterVisitor visitParameter(long offset, String[] names, int localVariableIndex) {
+									return new ParameterVisitor() {
+										@Override
+										public void visitComment(String line) {
+											mappingAcceptor.acceptMethodArgComment(className, name, desc, localVariableIndex, line);
+										}
+									};
+								}
+
+								@Override
+								public LocalVisitor visitLocalVariable(long offset, String[] names, int localVariableIndex, int localVariableStartOffset, int localVariableTableIndex) {
+									assert false;
+									return null; //Yarn doesn't publish these, and we don't handle them
+								}
+
+								@Override
+								public void visitComment(String line) {
+									mappingAcceptor.acceptMethodComment(className, name, desc, line);
+								}
+							};
+						}
+
+						@Override
+						public FieldVisitor visitField(long offset, String[] names, String descriptor) {
+							return new FieldVisitor() {
+								private final String name = names[index];
+								private final String desc = index == 0 ? descriptor : MappingSplat.remapDesc(descriptor, classRemapper);
+
+								@Override
+								public void visitComment(String line) {
+									mappingAcceptor.acceptFieldComment(className, name, desc, line);
+								}
+							};
+						}
+
+						@Override
+						public void visitComment(String line) {
+							mappingAcceptor.acceptClassComment(className, line);
+						}
+					};
 				}
 			});
 		}

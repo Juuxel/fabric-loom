@@ -41,15 +41,14 @@ public final class MappingsCache {
 
 	private final Map<Path, SoftReference<Mappings>> mappingsCache = new HashMap<>();
 
+	private MappingsCache() {
+	}
+
 	//TODO: loom doesn't actually use new mappings when the mappings change until the Gradle daemons are stopped
     public Mappings get(Path mappingsPath) throws IOException {
 		mappingsPath = mappingsPath.toAbsolutePath();
 
-		if (StaticPathWatcher.INSTANCE.hasFileChanged(mappingsPath)) {
-			mappingsCache.remove(mappingsPath);
-		}
-
-        SoftReference<Mappings> ref = mappingsCache.get(mappingsPath);
+        SoftReference<Mappings> ref = !StaticPathWatcher.INSTANCE.hasFileChanged(mappingsPath) ? mappingsCache.get(mappingsPath) : null;
         Mappings mappings = ref != null ? ref.get() : null;
 
         if (mappings == null) {
@@ -57,6 +56,8 @@ public final class MappingsCache {
                 mappings = MappingsProvider.readTinyMappings(stream, false);
                 mappingsCache.put(mappingsPath, new SoftReference<>(mappings));
             }
+
+        	StaticPathWatcher.INSTANCE.resetFile(mappingsPath);
         }
 
         return mappings;

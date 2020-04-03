@@ -33,12 +33,14 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public final class StaticPathWatcher {
 	public static final StaticPathWatcher INSTANCE = new StaticPathWatcher();
 
-	private final Map<Path, Boolean> changeCache = new HashMap<>();
+	private final Set<Path> changeCache = new HashSet<>();
 	private final WatchService service;
 	private final Map<Path, WatchKey> pathsObserved = new HashMap<>();
 
@@ -46,7 +48,20 @@ public final class StaticPathWatcher {
 		try {
 			service = FileSystems.getDefault().newWatchService();
 		} catch (IOException e) {
-			throw new RuntimeException(e);
+			throw new RuntimeException("Error creating watch service", e);
+		}
+	}
+
+	private void pollChanges() {
+		WatchKey key;
+		while ((key = service.poll()) != null) {
+			for (WatchEvent<?> event : key.pollEvents()) {
+				Object ctx = event.context();
+
+				if (ctx instanceof Path) {
+					changeCache.add(((Path) ctx).toAbsolutePath());
+				}
+			}
 		}
 	}
 
@@ -55,35 +70,31 @@ public final class StaticPathWatcher {
 			return true;
 		}
 
-		WatchKey key;
-
-		while ((key = service.poll()) != null) {
-			for (WatchEvent<?> event : key.pollEvents()) {
-				Object ctx = event.context();
-
-				if (ctx instanceof Path) {
-					changeCache.put(((Path) ctx).toAbsolutePath(), true);
-				}
-			}
-		}
-
+		pollChanges();
 		filePath = filePath.toAbsolutePath();
-		Path parentPath = filePath.getParent();
 
-		if (changeCache.containsKey(filePath)) {
+		if (changeCache.contains(filePath)) {
 			return true;
 		} else {
+			Path parentPath = filePath.getParent();
+
 			if (!pathsObserved.containsKey(parentPath)) {
 				try {
 					pathsObserved.put(parentPath, parentPath.register(service, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE));
 
 					return true;
 				} catch (IOException e) {
-					throw new RuntimeException(e);
+					throw new RuntimeException("Error registering watch on " + parentPath, e);
 				}
 			} else {
 				return false;
 			}
 		}
+	}
+
+	public void resetFile(Path file) {
+		pollChanges();
+
+		changeCache.remove(file.toAbsolutePath());
 	}
 }

@@ -35,12 +35,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.net.UrlEscapers;
+
+import cuchaz.enigma.command.MapSpecializedMethodsCommand;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -61,7 +65,6 @@ import net.fabricmc.loom.providers.mappings.MappingBlob.Mapping.Field;
 import net.fabricmc.loom.providers.mappings.MappingBlob.Mapping.Method;
 import net.fabricmc.loom.providers.mappings.MappingSplat;
 import net.fabricmc.loom.providers.mappings.MappingSplat.CombinedMapping;
-import net.fabricmc.loom.providers.mappings.MappingSplat.CombinedMapping.ArgOnlyMethod;
 import net.fabricmc.loom.providers.mappings.MappingSplat.CombinedMapping.CombinedField;
 import net.fabricmc.loom.providers.mappings.MappingSplat.CombinedMapping.CombinedMethod;
 import net.fabricmc.loom.providers.mappings.TinyDuplicator;
@@ -80,7 +83,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 	}
 	public MappingFactory mcRemappingFactory;
 
-	private static final String INTERMEDIARY = "net.fabricmc.intermediary";
+	static final String INTERMEDIARY = "net.fabricmc.intermediary";
 	private final List<MappingFile> mappingFiles = new ArrayList<>();
 
 	public String mappingsName;
@@ -97,10 +100,14 @@ public class MappingsProvider extends LogicalDependencyProvider {
 	private File MAPPINGS_TINY_BASE;
 	// The mappings we use in practice
 	public File MAPPINGS_TINY;
-	private Path parameterNames;
+	private Path parameterNames, decompileComments;
 
 	public Mappings getMappings() throws IOException {
 		return MappingsCache.INSTANCE.get(MAPPINGS_TINY.toPath());
+	}
+
+	public Path getDecompileMappings() {
+		return decompileComments;
 	}
 
 	@Override
@@ -124,62 +131,44 @@ public class MappingsProvider extends LogicalDependencyProvider {
 			}
 
 			free: if (!MAPPINGS_TINY_BASE.exists()) {
+				Map<String, List<MappingFile>> versionToMappings = new HashMap<>();
+
 				for (ListIterator<MappingFile> it = mappingFiles.listIterator(); it.hasNext();) {
 					MappingFile file = it.next();
 
 					if (file.type.needsEnlightening()) {
-						it.set(file.enlighten()); //Need to work out what the type of the ambiguous mapping files are
+						it.set(file = file.enlighten()); //Need to work out what the type of the ambiguous mapping files are
 					}
+
+					versionToMappings.computeIfAbsent(file.minecraftVersion, k -> new ArrayList<>()).add(file);
 				}
 
-				//Need to see if any of the mapping files have Intermediaries for the Minecraft version they're going to be running on
-				Optional<MappingFile> interProvider = mappingFiles.stream().filter(file -> file.minecraftVersion.equals(minecraftVersion)).sorted((fileA, fileB) -> {
-					if (fileA.type == fileB.type) return 0;
+				for (List<MappingFile> mappings : versionToMappings.values()) {
+					mappings.sort((fileA, fileB) -> {
+						if (fileA.type == fileB.type) return 0;
 
-					switch (fileA.type) {//Sort by ease of ability to extract headers
-					case TinyGz:
-						return -1;
-
-					case TinyV1:
-						return fileB.type == MappingType.TinyGz ? 1 : -1;
-
-					case TinyV2:
-						return fileB.type == MappingType.Enigma ? -1 : 1;
-
-					case Enigma:
-						return 1;
-
-					default:
-					case Tiny:
-						throw new IllegalArgumentException("Unexpected mapping types to compare: " + fileA.type + " and " + fileB.type);
-					}
-				}).filter(file -> {
-					try {
-						List<String> headers;
-						switch (file.type) {
-						case Enigma: //Never will (unless it goes Notch <=> Intermediary which is pointless to be in Enigma's format)
-							return false;
-
+						switch (fileA.type) {//Sort by ease of ability to extract headers
 						case TinyV1:
+							return -1;
+
 						case TinyV2:
-							headers = file.getNamespaces();
-							break;
+							return fileB.type == MappingType.TinyV1 ? 1 : -1;
 
 						case TinyGz:
-							headers = TinyReader.readHeaders(file.origin.toPath());
-							break;
+							return fileB.type == MappingType.Enigma ? -1 : 1;
+
+						case Enigma:
+							return 1;
 
 						default:
 						case Tiny:
-							throw new IllegalArgumentException("Unexpected mapping types to read: " + file.type);
+							throw new IllegalArgumentException("Unexpected mapping types to compare: " + fileA.type + " and " + fileB.type);
 						}
+					});
+				}
 
-						assert headers.indexOf("named") >= 0; //We should have named mappings, odd file otherwise
-						return headers.indexOf("official") >= 0 && headers.indexOf("intermediary") >= 0;
-					} catch (IOException e) {
-						throw new UncheckedIOException("Error reading mapping file from " + file.origin, e);
-					}
-				}).findFirst();
+				//Need to see if any of the mapping files have Intermediaries for the Minecraft version they're going to be running on
+				Optional<MappingFile> interProvider = searchForIntermediaries(versionToMappings.getOrDefault(minecraftVersion, Collections.emptyList()));
 
 				MappingBlob intermediaries;
 				if (interProvider.isPresent()) {
@@ -201,7 +190,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 							break free;
 
 						case TinyV2:
-							TinyV2toV1.convert(mappings.origin.toPath(), MAPPINGS_TINY_BASE.toPath(), parameterNames);
+							TinyV2toV1.convert(mappings.origin.toPath(), MAPPINGS_TINY_BASE.toPath(), parameterNames, decompileComments);
 							break free;
 
 						case Enigma:
@@ -214,6 +203,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 					project.getLogger().lifecycle(":loading intermediaries " + mappings.origin.getName());
 					switch (mappings.type) {
 					case Tiny:
+						assert false: "Unexpected mappings type " + mappings.type + " from " + mappings.origin;
 					case TinyV1:
 					case TinyV2:
 						try (FileSystem fileSystem = FileSystems.newFileSystem(mappings.origin.toPath(), null)) {
@@ -257,6 +247,52 @@ public class MappingsProvider extends LogicalDependencyProvider {
 					boolean nativeNames = false;
 
 					switch (mapping.type) {
+					case Enigma: {
+						EnigmaReader.readEnigma(mapping.origin.toPath(), gains);
+
+						if (gains.stream().parallel().noneMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_"))) {
+							nativeNames = true;
+						} else {
+							assert gains.stream().parallel().filter(classMapping -> classMapping.to() != null).allMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_") || classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")):
+								gains.stream().filter(classMapping -> classMapping.to() != null && !classMapping.from.startsWith("net/minecraft/class_") && !classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")).map(classMapping -> classMapping.from).collect(Collectors.joining(", ", "Found unexpected initial mapping classes: [", "]"));
+							assert gains.streamMethods().parallel().filter(method -> method.name() != null).allMatch(method -> method.fromName.startsWith("method_") || method.fromName.equals(method.name())):
+								gains.streamMethods().filter(method -> method.name() != null && !method.fromName.startsWith("method_")).map(method -> method.fromName + method.fromDesc).collect(Collectors.joining(", ", "Found unexpected method mappings: ", "]"));
+							assert gains.streamFields().parallel().filter(field -> field.name() != null).allMatch(field -> field.fromName.startsWith("field_")):
+								gains.streamFields().filter(field -> field.name() != null && !field.fromName.startsWith("field_")).map(field -> field.fromName).collect(Collectors.joining(", ", "Found unexpected field mappings: ", "]"));
+						}
+
+						Path contextJar;
+						if (minecraftVersion.equals(mapping.minecraftVersion)) {
+							if (nativeNames) {
+								contextJar = minecraftProvider.getMergedJar().toPath();
+							} else {
+								contextJar = SnappyRemapper.remapCurrentJar(project, extension, minecraftProvider, interProvider.map(mappingFile -> mappingFile.origin.toPath()));
+							}
+						} else {
+							if (nativeNames) {
+								contextJar = SnappyRemapper.makeMergedJar(project, extension, mapping.minecraftVersion).getRight();
+							} else {
+								contextJar = SnappyRemapper.makeInterJar(project, extension, mapping.minecraftVersion, //See if we've actually got the old Intermediaries per chance too
+										searchForIntermediaries(versionToMappings.getOrDefault(mapping.minecraftVersion, Collections.emptyList())).map(mappingFile -> mappingFile.origin.toPath()));
+							}
+						}
+
+						String from = nativeNames ? "official" : "intermediary";
+						Path specialisedMappings = MAPPINGS_DIR.toPath().resolve(FilenameUtils.removeExtension(mapping.origin.getName()) + "-specialised.jar");
+						try (FileSystem fs = FileSystems.newFileSystem(new URI("jar:" + specialisedMappings.toUri()), Collections.singletonMap("create", "true"))) {
+							Path destination = fs.getPath("mappings/mappings.tiny");
+
+							Files.createDirectories(destination.getParent());
+							MapSpecializedMethodsCommand.run(contextJar, "enigma", mapping.origin.toPath(), "tinyv2:" + from + ":named", destination);
+						} catch (URISyntaxException e) {
+							throw new IllegalStateException("Cannot convert jar path to URI?", e);
+						} catch (IOException e) {
+							throw new UncheckedIOException("Error creating mappings jar", e);
+						}
+
+						mapping = new MappingFile(specialisedMappings.toFile(), mapping.name, mapping.version, mapping.minecraftVersion, MappingType.TinyV2, ImmutableList.of(from, "named"));
+					}
+
 					case TinyV1:
 					case TinyV2: {
 						String origin;
@@ -270,6 +306,21 @@ public class MappingsProvider extends LogicalDependencyProvider {
 
 						try (FileSystem fileSystem = FileSystems.newFileSystem(mapping.origin.toPath(), null)) {
 							TinyReader.readTiny(fileSystem.getPath("mappings/mappings.tiny"), origin, "named", gains);
+
+							if (mapping.type == MappingType.TinyV2) {
+								UnaryOperator<String> classRemapper;
+								if (!origin.equals(mapping.getNamespaces().get(0))) {
+									MappingBlob nativeToOrigin = new MappingBlob();
+									TinyReader.readTiny(fileSystem.getPath("mappings/mappings.tiny"), mapping.getNamespaces().get(0), origin, nativeToOrigin);
+									classRemapper = name -> {
+										String remap = nativeToOrigin.tryMapName(name);
+										return remap != null ? remap : name;
+									};
+								} else {
+									classRemapper = null; //Origin column is the main column, descriptors won't need to be renamed
+								}
+								TinyReader.readComments(fileSystem.getPath("mappings/mappings.tiny"), origin, classRemapper, gains);
+							}
 						}
 						break;
 					}
@@ -290,22 +341,6 @@ public class MappingsProvider extends LogicalDependencyProvider {
 						break;
 					}
 
-					case Enigma: {
-						EnigmaReader.readEnigma(mapping.origin.toPath(), gains);
-
-						if (gains.stream().parallel().noneMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_"))) {
-							nativeNames = true;
-						} else {
-							assert gains.stream().parallel().filter(classMapping -> classMapping.to() != null).allMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_") || classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")):
-								gains.stream().filter(classMapping -> classMapping.to() != null && !classMapping.from.startsWith("net/minecraft/class_") && !classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")).map(classMapping -> classMapping.from).collect(Collectors.joining(", ", "Found unexpected initial mapping classes: [", "]"));
-							assert gains.streamMethods().parallel().filter(method -> method.name() != null).allMatch(method -> method.fromName.startsWith("method_") || method.fromName.equals(method.name())):
-								gains.streamMethods().filter(method -> method.name() != null && !method.fromName.startsWith("method_")).map(method -> method.fromName + method.fromDesc).collect(Collectors.joining(", ", "Found unexpected method mappings: ", "]"));
-							assert gains.streamFields().parallel().filter(field -> field.name() != null).allMatch(field -> field.fromName.startsWith("field_")):
-								gains.streamFields().filter(field -> field.name() != null && !field.fromName.startsWith("field_")).map(field -> field.fromName).collect(Collectors.joining(", ", "Found unexpected field mappings: ", "]"));
-						}
-						break;
-					}
-
 					case Tiny: //Should have already enlightened this by now
 						throw new IllegalStateException("Unexpected mappings type " + mapping.type + " from " + mapping.origin);
 					}
@@ -314,19 +349,23 @@ public class MappingsProvider extends LogicalDependencyProvider {
 						MappingBlob renamer;
 						if (!minecraftVersion.equals(mapping.minecraftVersion)) {
 							renamer = versionToIntermediaries.computeIfAbsent(mapping.minecraftVersion, version -> {
-								File intermediaryNames = new File(extension.getUserCache(), "mappings/" + version + '/' + INTERMEDIARY + "-intermediary.tiny");
+								Path intermediaryNames = searchForIntermediaries(versionToMappings.getOrDefault(version, Collections.emptyList())).map(mappingFile -> mappingFile.origin.toPath()).orElseGet(() -> {
+									File inters = new File(extension.getUserCache(), "mappings/" + version + '/' + INTERMEDIARY + "-intermediary.tiny");
 
-								if (!intermediaryNames.exists()) {//Grab intermediary mappings from Github
-									try {
-										FileUtils.copyURLToFile(new URL("https://github.com/FabricMC/intermediary/raw/master/mappings/" + UrlEscapers.urlPathSegmentEscaper().escape(minecraftVersion) + ".tiny"), intermediaryNames);
-									} catch (IOException e) {
-										throw new UncheckedIOException("Error downloading Intermediary mappings for " + version, e);
+									if (!inters.exists()) {//Grab intermediary mappings from Github
+										try {
+											FileUtils.copyURLToFile(new URL("https://github.com/FabricMC/intermediary/raw/master/mappings/" + UrlEscapers.urlPathSegmentEscaper().escape(version) + ".tiny"), inters);
+										} catch (IOException e) {
+											throw new UncheckedIOException("Error downloading Intermediary mappings for " + version, e);
+										}
 									}
-								}
+
+									return inters.toPath();
+								});
 
 								MappingBlob inters = new MappingBlob();
 								try {
-									TinyReader.readTiny(intermediaryNames.toPath(), "official", "intermediary", inters);
+									TinyReader.readTiny(intermediaryNames, "official", "intermediary", inters);
 								} catch (IOException e) {
 									throw new UncheckedIOException("Error reading Intermediary mappings for " + version, e);
 								}
@@ -350,18 +389,35 @@ public class MappingsProvider extends LogicalDependencyProvider {
 						}
 						assert interMapping.from.equals(existingClass.from);
 
+						if (!existingClass.comment().isPresent()) {
+							classMapping.comment().ifPresent(comment -> {
+								mappings.acceptClassComment(classMapping.from, comment);
+							});
+						}
+
 						for (Method method : classMapping.methods()) {
-							if (!interMapping.hasMethod(method)) continue;
+							if (!interMapping.hasMethod(method) && method.fromName.charAt(0) != '<') continue;
 
 							Method existingMethod = existingClass.method(method);
 							if (existingMethod.name() == null && !existingMethod.fromName.equals(method.name())) {
 								mappings.acceptMethod(classMapping.from, method.fromName, method.fromDesc, existingClass.to(), method.name(), method.desc());
 							}
 
+							if (!existingMethod.comment().isPresent()) {
+								method.comment().ifPresent(comment -> {
+									mappings.acceptMethodComment(classMapping.from, method.fromName, method.fromDesc, comment);
+								});
+							}
+
 							if (method.hasArgs()) {
 								method.iterateArgs((arg, index) -> {
 									if (existingMethod.arg(index) == null) {
 										mappings.acceptMethodArg(classMapping.from, method.fromName, method.fromDesc, index, arg);
+									}
+								});
+								method.iterateArgComments((comment, index) -> {
+									if (!existingMethod.argComment(index).isPresent()) {
+										mappings.acceptMethodArgComment(classMapping.from, method.fromName, method.fromDesc, index, comment);
 									}
 								});
 							}
@@ -374,6 +430,12 @@ public class MappingsProvider extends LogicalDependencyProvider {
 							if (existingField.name() == null && !existingField.fromName.equals(field.name())) {
 								mappings.acceptField(classMapping.from, field.fromName, field.fromDesc, existingClass.to(), field.name(), field.desc());
 							}
+
+							if (!existingField.comment().isPresent()) {
+								field.comment().ifPresent(comment -> {
+									mappings.acceptMethodComment(classMapping.from, field.fromName, field.fromDesc, comment);
+								});
+							}
 						}
 					}
 				}
@@ -385,33 +447,50 @@ public class MappingsProvider extends LogicalDependencyProvider {
 				try (TinyWriter writer = new TinyWriter(MAPPINGS_TINY_BASE.toPath(), "official", "named", "intermediary")) {
 					for (CombinedMapping mapping : combined) {
 						String notch = mapping.from;
-						writer.acceptClass(notch, mapping.to, mapping.fallback);
+						if (mapping.hasNameChange()) writer.acceptClass(notch, mapping.to, mapping.fallback);
 
-						for (CombinedMethod method : mapping.methods()) {
+						for (CombinedMethod method : mapping.methodsWithNames()) {
 							writer.acceptMethod(notch, method.fromDesc, method.from, method.to, method.fallback);
 						}
 
-						for (CombinedField field : mapping.fields()) {
+						for (CombinedField field : mapping.fieldsWithNames()) {
 							writer.acceptField(notch, field.fromDesc, field.from, field.to, field.fallback);
 						}
 					}
 				}
 
-				if (combined.hasArgs()) {
+				if (combined.hasArgNames()) {
 					project.getLogger().lifecycle(":writing " + parameterNames.getFileName());
 					try (BufferedWriter writer = Files.newBufferedWriter(parameterNames)) {
 						for (CombinedMapping mapping : combined) {
-							for (ArgOnlyMethod method : mapping.allArgs()) {
-								writer.write(mapping.to + '/' + method.from + method.fromDesc);
+							for (CombinedMethod method : mapping.methodsWithArgs()) {
+								if (!method.hasArgNames()) continue; //Just comments for the arguments
+
+								writer.write(mapping.to);
+								writer.write('/');
+								writer.write(method.from);
+								writer.write(method.fromDesc);
 								writer.newLine();
-								for (String arg : method.namedArgs()) {
-									assert !arg.endsWith(": null"); //Skip nulls
+
+								method.<IOException>iterateArgs((index, arg) -> {
+									assert arg != null; //Should be skipping nulls
+
 									writer.write('\t');
+									writer.write(Integer.toString(index));
+									writer.write(':');
+									writer.write(' ');
 									writer.write(arg);
 									writer.newLine();
-								}
+								});
 							}
 						}
+					}
+				}
+
+				if (combined.hasComments()) {
+					project.getLogger().lifecycle(":writing " + decompileComments.getFileName());
+					try (BufferedWriter writer = Files.newBufferedWriter(decompileComments)) {
+						TinyV2toV1.writeComments(writer, combined);
 					}
 				}
 
@@ -481,7 +560,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 		}
 
 		File mappingJar;
-		if (mappingFiles.size() == 1 && Iterables.getOnlyElement(mappingFiles).type == MappingType.TinyV1) {
+		if (mappingFiles.size() == 1 && Iterables.getOnlyElement(mappingFiles).enlighten().type == MappingType.TinyV1) {
 			mappingJar = Iterables.getOnlyElement(mappingFiles).origin;
 			if (MAPPINGS_TINY.lastModified() < mappingJar.lastModified()) MAPPINGS_TINY.setLastModified(mappingJar.lastModified() - 1);
 		} else {
@@ -503,6 +582,36 @@ public class MappingsProvider extends LogicalDependencyProvider {
 
 		assert mappingJar.exists() && mappingJar.lastModified() >= MAPPINGS_TINY.lastModified();
 		addDependency(mappingJar, project, Constants.MAPPINGS);
+	}
+
+	private static Optional<MappingFile> searchForIntermediaries(List<MappingFile> mappings) {
+		return mappings.stream().filter(file -> {
+			try {
+				List<String> headers;
+				switch (file.type) {
+				case Enigma: //Never will (unless it goes Notch <=> Intermediary which is pointless to be in Enigma's format)
+					return false;
+
+				case TinyV1:
+				case TinyV2:
+					headers = file.getNamespaces();
+					break;
+
+				case TinyGz:
+					headers = TinyReader.readHeaders(file.origin.toPath());
+					break;
+
+				default:
+				case Tiny:
+					throw new IllegalArgumentException("Unexpected mapping types to read: " + file.type);
+				}
+
+				assert headers.indexOf("named") >= 0; //We should have named mappings, odd file otherwise
+				return headers.indexOf("official") >= 0 && headers.indexOf("intermediary") >= 0;
+			} catch (IOException e) {
+				throw new UncheckedIOException("Error reading mapping file from " + file.origin, e);
+			}
+		}).findFirst();
 	}
 
 	private String readStackHistory() {
@@ -648,6 +757,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 		MAPPINGS_TINY_BASE = new File(MAPPINGS_DIR, mappingsName + "-tiny-" + minecraftVersion + '-' + mappingsVersion + "-base.tiny");
 		MAPPINGS_TINY = new File(MAPPINGS_DIR, mappingsName + "-tiny-" + minecraftVersion + '-' + mappingsVersion + ".tiny");
 		parameterNames = new File(MAPPINGS_DIR, mappingsName + "-params-" + minecraftVersion + '-' + mappingsVersion).toPath();
+		decompileComments = parameterNames.resolveSibling(mappingsName + "-tiny-" + minecraftVersion + '-' + mappingsVersion + "-decomp.tiny");
 
 		MAPPINGS_MIXIN_EXPORT = new File(extension.getProjectBuildCache(), "mixin-map-" + minecraftVersion + '-' + mappingsVersion + ".tiny");
 	}
@@ -658,6 +768,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 		intermediaryNames.delete();
 		try {
 			Files.deleteIfExists(parameterNames);
+			Files.deleteIfExists(decompileComments);
 		} catch (IOException e) {
 			e.printStackTrace(); //That's troublesome
 		}

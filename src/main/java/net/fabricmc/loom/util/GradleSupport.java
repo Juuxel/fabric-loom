@@ -25,6 +25,8 @@
 package net.fabricmc.loom.util;
 
 import java.lang.reflect.Method;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.ProjectLayout;
@@ -33,42 +35,35 @@ import org.gradle.api.model.ObjectFactory;
 
 /** This is used to bridge the gap over large Gradle API changes. */
 public class GradleSupport {
+	//Based on https://github.com/gradle/gradle/blob/master/subprojects/base-services/src/main/java/org/gradle/util/GradleVersion.java#L37
+	private static final Pattern VERSION_MATCHER = Pattern.compile("^(\\d+)\\.(\\d+)(?:\\.(\\d+)(?:\\.\\d+)*)?(?:-.+)?$");
+
 	public static int majorGradleVersion(Project project) {
 		String version = project.getGradle().getGradleVersion();
 
-		int split = version.indexOf('.');
-		assert split > 0: "Weird Gradle version: " + version;
+		Matcher matcher = VERSION_MATCHER.matcher(version);
+		if (!matcher.matches()) throw new IllegalArgumentException("Weird Gradle version: " + version);
 
-		return Integer.parseUnsignedInt(version.substring(0, split));
+		return Integer.parseUnsignedInt(matcher.group(1));
 	}
 
 	public static int minorGradleVersion(Project project) {
 		String version = project.getGradle().getGradleVersion();
 
-		int split = version.indexOf('.') + 1;
-		assert split > 1: "Weird Gradle version: " + version;
+		Matcher matcher = VERSION_MATCHER.matcher(version);
+		if (!matcher.matches()) throw new IllegalArgumentException("Weird Gradle version: " + version);
 
-		int splitSquared = version.indexOf('.', split);
-		if (splitSquared <= split) splitSquared = version.indexOf('-', split);
-		assert splitSquared > split: "Weird Gradle version: " + version;
-
-		return Integer.parseUnsignedInt(version.substring(split, splitSquared));
+		return Integer.parseUnsignedInt(matcher.group(2));
 	}
 
 	public static int patchGradleVersion(Project project) {
 		String version = project.getGradle().getGradleVersion();
 
-		int split = version.indexOf('.') + 1;
-		assert split > 1: "Weird Gradle version: " + version;
+		Matcher matcher = VERSION_MATCHER.matcher(version);
+		if (!matcher.matches()) throw new IllegalArgumentException("Weird Gradle version: " + version);
 
-		int splitSquared = version.indexOf('.', split);
-		if (splitSquared <= split) return 0;
-
-		int splitCubed= version.indexOf('.', ++splitSquared);
-		if (splitCubed <= splitSquared) splitCubed = version.indexOf('-', splitSquared);
-		if (splitCubed <= splitSquared) return 0; //Nothing says Gradle must have a patch version
-
-		return Integer.parseUnsignedInt(version.substring(splitSquared, splitCubed));
+		//Nothing says Gradle must have a patch version
+		return matcher.group(3) != null ? Integer.parseUnsignedInt(matcher.group(3)) : 0;
 	}
 
 	public static boolean extractNatives(Project project) {

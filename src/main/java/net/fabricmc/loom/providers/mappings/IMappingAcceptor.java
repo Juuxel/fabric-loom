@@ -28,4 +28,9 @@ public interface IMappingAcceptor {
 	void acceptMethod(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc);
 	void acceptMethodArg(String srcClsName, String srcMethodName, String srcMethodDesc, int lvIndex, String dstArgName);
 	void acceptField(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc);
+
+	void acceptClassComment(String className, String comment);
+	void acceptMethodComment(String className, String methodName, String desc, String comment);
+	void acceptMethodArgComment(String className, String methodName, String desc, int lvIndex, String comment);
+	void acceptFieldComment(String className, String fieldName, String desc, String comment);
 }

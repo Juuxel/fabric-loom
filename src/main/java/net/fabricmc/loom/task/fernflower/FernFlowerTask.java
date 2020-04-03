@@ -36,6 +36,7 @@ import java.util.function.Supplier;
 
 import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.logging.LogLevel;
+import org.gradle.api.logging.LoggingManager;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.internal.logging.progress.ProgressLogger;
@@ -70,7 +71,7 @@ public class FernFlowerTask extends AbstractDecompileTask implements ForkingJava
         options.put(IFernflowerPreferences.INDENT_STRING, "\t"); //Use a tab not three spaces :|
 		options.put(IFernflowerPreferences.INCLUDE_ENTIRE_CLASSPATH, "1");
         options.put(IFernflowerPreferences.LOG_LEVEL, "trace");
-        getLogging().captureStandardOutput(LogLevel.LIFECYCLE);
+        ((LoggingManager) getLogging()).captureStandardOutput(LogLevel.LIFECYCLE);
 
 		List<String> args = new ArrayList<>();
 
@@ -83,7 +84,7 @@ public class FernFlowerTask extends AbstractDecompileTask implements ForkingJava
 		}
 
 		args.add("-t=" + getNumThreads());
-		args.add("-m=" + getExtension().getMappingsProvider().MAPPINGS_TINY.getAbsolutePath());
+		args.add("-m=" + getExtension().getMappingsProvider().getDecompileMappings().toAbsolutePath());
 
 		//TODO, Decompiler breaks on jemalloc, J9 module-info.class?
 		getLibraries().forEach(f -> args.add("-e=" + f.getAbsolutePath()));

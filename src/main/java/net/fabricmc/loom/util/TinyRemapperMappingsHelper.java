@@ -45,7 +45,7 @@ public class TinyRemapperMappingsHelper {
 
 			for (FieldEntry entry : mappings.getFieldEntries()) {
 				EntryTriple fromTriple = entry.get(from);
-				fieldMap.put(fromTriple.getOwner() + '/' + MemberInstance.getFieldId(fromTriple.getName(), fromTriple.getDesc()), entry.get(to).getName());
+				fieldMap.put(fromTriple.getOwner() + '/' + MemberInstance.getFieldId(fromTriple.getName(), fromTriple.getDesc(), false), entry.get(to).getName());
 			}
 
 			for (MethodEntry entry : mappings.getMethodEntries()) {

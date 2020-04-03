@@ -1,25 +1,9 @@
 /*
- * This file is part of fabric-loom, licensed under the MIT License (MIT).
+ * Copyright 2019, 2020 Chocohead
  *
- * Copyright (c) 2019 Chocohead
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 package net.fabricmc.loom.providers.mappings;
 
@@ -29,6 +13,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.ObjIntConsumer;
 import java.util.function.UnaryOperator;
@@ -43,7 +28,10 @@ import net.fabricmc.loom.providers.mappings.MappingBlob.Mapping.Method;
 public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 	public static class Mapping {
 		public static class Method extends Field {
-			private String[] args = new String[0];
+			static class Arg {
+				String name, comment;
+			}
+			private Arg[] args = new Arg[0];
 
 			public Method(String fromName, String fromDesc) {
 				super(fromName, fromDesc);
@@ -54,60 +42,115 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 				}
 			}
 
-			void addArg(String name, int index) {
+			private Arg extendTo(int index) {
 				if (args.length <= index) {
-					String[] longerArgs = new String[index + 1];
+					Arg[] longerArgs = new Arg[index + 1];
 					System.arraycopy(args, 0, longerArgs, 0, args.length);
 					args = longerArgs;
 				}
-				args[index] = name;
+
+				return args[index] == null ? args[index] = new Arg() : args[index];
+			}
+
+			void addArg(int index, String name) {
+				extendTo(index).name = name;
+			}
+
+			void addArgComment(int index, String comment) {
+				extendTo(index).comment = comment;
 			}
 
 			public boolean hasArgs() {
 				return args.length > 0;
 			}
 
-			String[] args() {
-				return args;
+			public boolean hasArgNames() {
+				return Arrays.stream(args).filter(Objects::nonNull).anyMatch(arg -> arg.name != null);
 			}
 
-			void args(String[] args) {
-				if (this.args.length < args.length) {
-					this.args = Arrays.copyOf(args, args.length);
-				} else {
-					System.arraycopy(args, 0, this.args, 0, args.length);
+			public boolean hasArgComments() {
+				return Arrays.stream(args).filter(Objects::nonNull).anyMatch(arg -> arg.comment != null);
+			}
+
+			Arg[] cloneArgs() {
+				return Arrays.stream(args).map(arg -> {
+					if (arg == null) return null;
+					Arg clone = new Arg();
+
+					clone.name = arg.name;
+					clone.comment = arg.comment;
+
+					return clone;
+				}).toArray(Arg[]::new);
+			}
+
+			void cloneArgs(Method method) {
+				if (method.args.length > args.length) args = new Arg[method.args.length];
+
+				for (int i = 0; i < method.args.length; i++) {
+					Arg arg = method.args[i];
+					if (arg == null) continue;
+
+					Arg clone = args[i] == null ? args[i] = new Arg() : args[i];
+					clone.name = arg.name;
+					clone.comment = arg.comment;
 				}
 			}
 
-			public String arg(int index) {
-				return args.length > index ? args[index] : null;
+			Arg[] extendArgs(Method that) {
+				Arg[] args = new Arg[Math.max(this.args.length, that.args.length)];
+
+				Arg[] shorter = args.length == this.args.length ? that.args : this.args;
+				assert shorter.length == Math.min(this.args.length, that.args.length);
+				Arg[] longer = shorter == this.args ? that.args : this.args;
+				assert longer.length == args.length;
+
+				for (int i = 0; i < shorter.length; i++) {
+					Arg existing = this.args[i];
+					Arg other = that.args[i];
+					if (existing == null && other == null) continue; //Neither have a suggestion
+
+					Arg clone = args[i] = new Arg();
+					clone.name = existing != null && existing.name != null ? existing.name : other != null ? other.name : null;
+					clone.comment = existing != null && existing.comment != null ? existing.comment : other != null ? other.comment : null;
+				}
+
+				for (int i = shorter.length; i < longer.length; i++) {
+					Arg only = longer[i];
+					if (only == null) continue;
+
+					Arg clone = args[i] = new Arg();
+					clone.name = only.name;
+					clone.comment = only.comment;
+				}
+
+				return args;
 			}
 
-			public Iterable<String> namedArgs() {
-				return () -> new Iterator<String>() {
-					private int head = args.length - 1;
+			public String arg(int index) {
+				return args.length > index && args[index] != null ? args[index].name : null;
+			}
 
-					@Override
-					public boolean hasNext() {
-						return head >= 0;
-					}
-
-					@Override
-					public String next() {
-						return head + ": " + args[head--];
-					}
-				};
+			public Optional<String> argComment(int index) {
+				return args.length > index ? Optional.ofNullable(args[index]).map(arg -> arg.comment) : Optional.empty();
 			}
 
 			public void iterateArgs(ObjIntConsumer<String> argConsumer) {
 				for (int i = 0; i < args.length; i++) {
-					if (args[i] != null) argConsumer.accept(args[i], i);
+					if (args[i] != null && args[i].name != null) argConsumer.accept(args[i].name, i);
+				}
+			}
+
+			public void iterateArgComments(ObjIntConsumer<String> argCommentConsumer) {
+				for (int i = 0; i < args.length; i++) {
+					if (args[i] != null && args[i].comment != null) argCommentConsumer.accept(args[i].comment, i);
 				}
 			}
 		}
 		public static class Field {
 			public final String fromName, fromDesc;
 			private String toName, toDesc;
+			String comment;
 
 			public Field(String fromName, String fromDesc) {
 				this.fromName = fromName;
@@ -130,10 +173,15 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 			public String desc() {
 				return toDesc;
 			}
+
+			public Optional<String> comment() {
+				return Optional.ofNullable(comment);
+			}
 		}
 
 		public final String from;
 		String to;
+		String comment;
 		final Map<String, Method> methods = new HashMap<>();
 		final Map<String, Field> fields = new HashMap<>();
 
@@ -147,6 +195,10 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 
 		public String toOr(String alternative) {
 			return to != null ? to : alternative;
+		}
+
+		public Optional<String> comment() {
+			return Optional.ofNullable(comment);
 		}
 
 		public Iterable<Method> methods() {
@@ -199,18 +251,38 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 	}
 
 	@Override
+	public void acceptClassComment(String className, String comment) {
+		get(className).comment = comment;
+	}
+
+	@Override
 	public void acceptMethod(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) {
 		get(srcClsName).method(srcName, srcDesc).setMapping(dstName, dstDesc);
 	}
 
 	@Override
+	public void acceptMethodComment(String className, String methodName, String desc, String comment) {
+		get(className).method(methodName, desc).comment = comment;
+	}
+
+	@Override
 	public void acceptMethodArg(String srcClsName, String srcMethodName, String srcMethodDesc, int lvIndex, String dstArgName) {
-		get(srcClsName).method(srcMethodName, srcMethodDesc).addArg(dstArgName, lvIndex);
+		get(srcClsName).method(srcMethodName, srcMethodDesc).addArg(lvIndex, dstArgName);
+	}
+
+	@Override
+	public void acceptMethodArgComment(String className, String methodName, String desc, int lvIndex, String comment) {
+		get(className).method(methodName, desc).addArgComment(lvIndex, comment);
 	}
 
 	@Override
 	public void acceptField(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) {
 		get(srcClsName).field(srcName, srcDesc).setMapping(dstName, dstDesc);
+	}
+
+	@Override
+	public void acceptFieldComment(String className, String fieldName, String desc, String comment) {
+		get(className).field(fieldName, desc).comment = comment;
 	}
 
 	@Override
@@ -273,6 +345,7 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 			}
 
 			invertion.acceptClass(mapping.to, mapping.from);
+			invertion.acceptClassComment(mapping.to, mapping.comment);
 
 			if (doFields) {
 				for (Field field : mapping.fields()) {
@@ -281,6 +354,7 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 
 					String desc = MappingSplat.makeDesc(field, classRemapper);
 					invertion.acceptField(mapping.to, field.name(), desc, mapping.from, field.fromName, field.fromDesc);
+					invertion.acceptFieldComment(mapping.to, field.name(), desc, field.comment);
 				}
 			}
 
@@ -291,7 +365,8 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 
 					String desc = MappingSplat.makeDesc(method, classRemapper);
 					invertion.acceptMethod(mapping.to, method.name(), desc, mapping.from, method.fromName, method.fromDesc);
-					if (doArgs) invertion.get(mapping.to).method(method.name(), desc).args(method.args());
+					invertion.acceptMethodComment(mapping.to, method.name(), desc, method.comment);
+					if (doArgs) invertion.get(mapping.to).method(method.name(), desc).cloneArgs(method);
 				}
 			}
 		}
@@ -313,6 +388,7 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 
 			String className = useBridge ? bridge.to : mapping.from;
 			remap.acceptClass(className, mapping.to);
+			remap.acceptClassComment(className, mapping.comment);
 
 			for (Field field : mapping.fields()) {
 				if (useBridge && bridge.hasField(field)) {
@@ -321,11 +397,14 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 					if (bridged.name() != null) {
 						assert bridged.desc() != null;
 						remap.acceptField(className, bridged.name(), bridged.desc(), mapping.to, field.name(), field.desc());
+						remap.acceptFieldComment(className, bridged.name(), bridged.desc(), field.comment);
 						continue;
 					}
 				}
 
-				remap.acceptField(className, field.fromName, MappingSplat.remapDesc(field.fromDesc, classRemapper), mapping.to, field.name(), field.desc());
+				String desc = MappingSplat.remapDesc(field.fromDesc, classRemapper);
+				remap.acceptField(className, field.fromName, desc, mapping.to, field.name(), field.desc());
+				remap.acceptFieldComment(className, field.fromName, desc, field.comment);
 			}
 
 			for (Method method : mapping.methods()) {
@@ -335,14 +414,16 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 					if (bridged.name() != null) {
 						assert bridged.desc() != null;
 						remap.acceptMethod(className, bridged.name(), bridged.desc(), mapping.to, method.name(), method.desc());
-						remap.get(className).method(bridged.name(), bridged.desc()).args(method.args());
+						remap.acceptMethodComment(className, bridged.name(), bridged.desc(), method.comment);
+						remap.get(className).method(bridged.name(), bridged.desc()).cloneArgs(method);
 						continue;
 					}
 				}
 
 				String desc = MappingSplat.remapDesc(method.fromDesc, classRemapper);
 				remap.acceptMethod(className, method.fromName, desc, mapping.to, method.name(), method.desc());
-				remap.get(className).method(method.fromName, desc).args(method.args());
+				remap.acceptMethodComment(className, method.fromName, desc, method.comment);
+				remap.get(className).method(method.fromName, desc).cloneArgs(method);
 			}
 
 		}

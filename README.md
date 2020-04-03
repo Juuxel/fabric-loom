@@ -1,5 +1,5 @@
 # Fabric Loom - Sin² Edition
-A fork of [Fabric's Gradle plugin](https://github.com/FabricMC/fabric-loom/tree/dev/0.2) to make it do things asie didn't want it to do.
+A fork of [Fabric's Gradle plugin](https://github.com/FabricMC/fabric-loom) to make it do things asie didn't want it to do.
 
 Usage: `gradlew genSources eclipse/idea/vscode`
 (Use `./gradle` on macOS and Linux)
@@ -7,6 +7,7 @@ Usage: `gradlew genSources eclipse/idea/vscode`
 
 ## What's new?
 * [FernFlower](https://github.com/FabricMC/intellij-fernflower) switched to [ForgeFlower](https://github.com/MinecraftForge/ForgeFlower) for `genSources`
+* Support for using mappings on the wrong version
 * Support for Enigma mappings
 * Support for gz compressed Tiny mappings
 * Support to pull Enigma mappings straight from Github
@@ -22,7 +23,7 @@ Usage: `gradlew genSources eclipse/idea/vscode`
 Whilst not a whole lot needs to change compared to a normal Loom setup, there is a single tweak that has to be made in order to get said setup running. A full example of a working `build.gradle` using several Sin² features can be found [here](https://github.com/Chocohead/Fabric-ASM/blob/master/build.gradle).
 
 ### Declaring the plugin
-Both the Forge and Jitpack mavens are needed to grab ForgeFlower and a [Tiny Remapper fork](https://github.com/Chocohead/tiny-remapper) respectively in order for Sin² to work. The Gradle plugin also needs to change in order to pull the right version of Loom. Sin² versions are marked by the short Git commit revision.
+The Jitpack maven is needed to grab [ForgeFlower](https://github.com/Chocohead/ForgedFlower), a [Tiny Remapper fork](https://github.com/Chocohead/tiny-remapper), and a [Tiny Mappings Parser fork](https://github.com/Chocohead/Tiny-Mappings-Parser) in order for Sin² to work. Fabric's maven will cover all other libraries that both Loom and Sin² need to work aside from [Darcula](https://github.com/bulenkov/Darcula) which is on JCenter. The Gradle plugin also needs to change in order to pull the right version of Loom. Sin² versions are marked by the short Git commit revision.
 
 Together, the following will need to be switched in `build.gradle`:
 ```groovy
@@ -33,10 +34,6 @@ buildscript {
 			name = "Fabric"
 			url = "https://maven.fabricmc.net/"
 		}
-		maven {
-			name = "Forge"
-			url = "https://files.minecraftforge.net/maven/"
-		}
 		maven { 
 			name = "Jitpack"
 			url = "https://jitpack.io/"
@@ -44,7 +41,7 @@ buildscript {
 	}
 	dependencies {
 		//Sin² Edition Loom
-		classpath 'com.github.Chocohead:fabric-loom:5784f06'
+		classpath 'com.github.Chocohead:fabric-loom:e131f8f'
 	}
 }
 plugins {
@@ -69,11 +66,14 @@ Stock Version | Sin² Branch | Example Sin² Version
 0.2.4 | [openfine](https://github.com/Chocohead/fabric-loom/tree/openfine) | **7eb4201**
 0.2.5 | [dust](https://github.com/Chocohead/fabric-loom/tree/dust) | **5784f06**
 0.2.6 | *\<None\>* | -
-0.2.7 | [leaf](https://github.com/Chocohead/fabric-loom/tree/leaf) | **e5d69cb**
+0.2.7 | [leaf](https://github.com/Chocohead/fabric-loom/tree/leaf) | **e131f8f**
 
 
 ## How do I use the new things?
 Once you've switched over to using Sin², ForgeFlower decompiling will be used for `genSources`. For the other additional features however, more changes are needed:
+
+### Running mappings on different versions
+Normally it is up to the mappings to declare the Minecraft version they are designed for, and Loom will just trust that they supply everything that is needed remapping wise. This can cause a problem when trying to use them on another Minecraft version as they could be missing mappings for new or changed parts of the code. Sin² instead only trusts the mappings if they were designed for the Minecraft version being used, otherwise it will grab the correct Intermediary mappings for the Minecraft version actually being used and apply the mappings on top, allowing for the mappings to be missing parts without issue.
 
 ### Running with Enigma mappings
 Tiny V1 files don't ship with parameter or local variable names, whilst like Tiny V2 mappings, Enigma ones do. Thus for older versions without Tiny V2 files in order to get parameter mappings for methods, Enigma mappings have to be used instead. This causes additional excitement as the Enigma mappings don't come with [Intermediary mappings](https://github.com/FabricMC/intermediary). Fortunately this is all handled in the background and the additional Intermediaries will be downloaded if needed for the version of Minecraft being used. Several more steps will be noticed in the build process as a result as the two mapping sets then need to be merged and rewritten to the expected Tiny format used later by Loom. This only needs to happen once every time the mappings are changed though, so it's not so bad.
@@ -193,8 +193,8 @@ dependencies {
 	}
 	//Use the build 100 18w50a mappings where possible
 	mappings "net.fabricmc:yarn:18w50a.100"
-	//Otherwise use the 1.15.2-pre1 mappings
-	mappings "net.fabricmc:yarn:1.15.2-pre1+build.1:v2"
+	//Otherwise use the 1.15.2 mappings
+	mappings "net.fabricmc:yarn:1.15.2+build.14:v2"
 }
 ```
 As seen, stacking mappings can result in conflicts which prevent remapping. Using a dynamic mapping before the conflicting files is the best strategy to correct for this, as any mappings specified will take precedent and avoid the later conflicting mappings from being used. Once corrective steps have been taken to resolve the conflicts the Minecraft jar will be remapped again once Gradle is run.
@@ -225,4 +225,6 @@ The example source set will now produce a separate jar which doesn't include the
 
 
 ## What's broken?
-Ideally nothing, right now there is nothing Sin² knowingly breaks. Feel free to [report](https://github.com/Chocohead/Fabric-Loom/issues) anything if you do find something.
+With the newer 1.16 snapshots there are a couple of methods which ForgeFlower is unable to decompile. The various `register` methods in `net/minecraft/data/client/model/BlockStateVariantMap` and one in `BlockStateModelGenerator` all fail with a `StackOverflowError` (which can fill the console out depending on the logging history). `net/minecraft/entity/ai/brain/Brain#getOptionalMemory` also fails to decompile with a `NullPointerException`.
+
+Other than those issues (which manifest themselves as warnings whilst running `genSources`), there is nothing else Sin² knowingly breaks. Feel free to [report](https://github.com/Chocohead/Fabric-Loom/issues) anything if you do find something.
