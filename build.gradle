@@ -10,7 +10,7 @@ targetCompatibility = 1.8
 
 group = 'net.fabricmc'
 archivesBaseName = project.name
-version = 'aspen.6'
+version = '0.2.7-SNAPSHOT'
 
 def build = "local"
 def ENV = System.getenv()
@@ -58,6 +58,7 @@ dependencies {
 	implementation 'cuchaz:enigma:0.14.3.146:lib'
 	implementation 'com.github.Chocohead:Tiny-Mappings-Parser:97260fd'
 	implementation 'com.github.Chocohead:OptiSine:cc6da75' //Keep consistent with Openfine.VERSION
+	implementation 'cuchaz:enigma:0.15.150:lib'
 
 	// tinyfile management
 	implementation ('com.github.Chocohead:tiny-remapper:d4af165') {
