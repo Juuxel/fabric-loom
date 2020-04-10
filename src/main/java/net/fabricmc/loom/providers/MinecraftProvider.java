@@ -38,7 +38,6 @@ import com.google.common.io.Files;
 import com.google.gson.Gson;
 
 import org.gradle.api.GradleException;
-import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
 
@@ -165,12 +164,10 @@ public class MinecraftProvider extends PhysicalDependencyProvider {
 					String url;
 					switch (minecraftVersion) {
 					case "1.14.3 - Combat Test":
+						logger.warn("Using old name for first Combat Test, should use 1.14_combat-212796 instead");
 					case "1.14_combat-212796": //Combat Test 1
 						//Extracted from https://launcher.mojang.com/experiments/combat/610f5c9874ba8926d5ae1bcce647e5f0e6e7c889/1_14_combat-212796.zip
 						url = "https://gist.github.com/Chocohead/b62b1e94d8d4b32ef3326df63cf407f2/raw/bdc1f968b3529ebca9b197a5b2612f57b6354624/1.14_combat-212796.json";
-
-						//No Intermediaries as https://github.com/FabricMC/intermediary/pull/7 was never fully merged
-						throw new InvalidUserDataException("No Intermediaries for first combat snapshot!");
 
 					case "1.14_combat-0": //Combat Test 2
 						//Extracted from https://launcher.mojang.com/experiments/combat/d164bb6ecc5fca9ac02878c85f11befae61ac1ca/1_14_combat-0.zip

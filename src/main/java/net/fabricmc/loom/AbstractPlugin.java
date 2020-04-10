@@ -164,7 +164,7 @@ public class AbstractPlugin implements Plugin<Project> {
 						Collections.addAll(javaCompileTask.getOptions().getCompilerArgs(),
 							"-AinMapFileNamedIntermediary=" + extension.getMappingsProvider().MAPPINGS_TINY.getCanonicalPath(),
 							"-AoutMapFileNamedIntermediary=" + extension.getMappingsProvider().MAPPINGS_MIXIN_EXPORT.getCanonicalPath(),
-							"-AoutRefMapFile=" + new File(javaCompileTask.getDestinationDir(), extension.getRefmapName()).getCanonicalPath(),
+							"-AoutRefMapFile=" + new File(javaCompileTask.getDestinationDir(), extension.getRefmapName(task)).getCanonicalPath(),
 							"-AdefaultObfuscationEnv=named:intermediary");
 					} catch (IOException e) {
 						e.printStackTrace();
@@ -190,7 +190,7 @@ public class AbstractPlugin implements Plugin<Project> {
 				try {
 					task.getOptions().getCompilerArgs().add("-AinMapFileNamedIntermediary=" + extension.getMappingsProvider().MAPPINGS_TINY.getCanonicalPath());
 					task.getOptions().getCompilerArgs().add("-AoutMapFileNamedIntermediary=" + extension.getMappingsProvider().MAPPINGS_MIXIN_EXPORT.getCanonicalPath());
-					task.getOptions().getCompilerArgs().add("-AoutRefMapFile=" + new File(task.getDestinationDir(), extension.getRefmapName()).getCanonicalPath());
+					task.getOptions().getCompilerArgs().add("-AoutRefMapFile=" + new File(task.getDestinationDir(), extension.getRefmapName(task)).getCanonicalPath());
 					task.getOptions().getCompilerArgs().add("-AdefaultObfuscationEnv=named:intermediary");
 				} catch (IOException e) {
 					e.printStackTrace();

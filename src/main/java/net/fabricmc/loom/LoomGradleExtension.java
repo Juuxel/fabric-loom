@@ -29,7 +29,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -41,6 +43,7 @@ import com.google.gson.JsonObject;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.mercury.Mercury;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.plugins.BasePluginConvention;
@@ -53,6 +56,7 @@ import net.fabricmc.loom.providers.MinecraftProvider;
 public class LoomGradleExtension {
 	public String runDir = "run";
 	public String refmapName;
+	public final Map<String, String> taskToRefmap = new HashMap<>();
 	public String loaderLaunchMethod;
 	public boolean remapMod = true;
 	public boolean autoGenIDERuns = true;
@@ -286,14 +290,16 @@ public class LoomGradleExtension {
 		this.dependencyManager = dependencyManager;
 	}
 
-	public String getRefmapName() {
-		if (refmapName == null || refmapName.isEmpty()) {
-			String defaultRefmapName = project.getConvention().getPlugin(BasePluginConvention.class).getArchivesBaseName() + "-refmap.json";
-			project.getLogger().warn("Could not find refmap definition, will be using default name: " + defaultRefmapName);
-			refmapName = defaultRefmapName;
-		}
+	public String getRefmapName(Task task) {
+		return taskToRefmap.computeIfAbsent(task.getName(), name -> {
+			if (refmapName == null || refmapName.isEmpty()) {
+				String defaultRefmapName = project.getConvention().getPlugin(BasePluginConvention.class).getArchivesBaseName() + "-refmap.json";
+				project.getLogger().warn("Could not find refmap definition, will be using default name: " + defaultRefmapName);
+				refmapName = defaultRefmapName;
+			}
 
-		return refmapName;
+			return refmapName;
+		});
 	}
 
 	public boolean ideSync() {
