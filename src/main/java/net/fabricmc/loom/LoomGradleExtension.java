@@ -60,8 +60,9 @@ public class LoomGradleExtension {
 	public boolean extractJars = false;
 	public String customManifest = null;
 	public File accessWidener = null;
-	public Function<String, Object> intermediaryUrl = mcVer -> "https://github.com/Juuxel/PotentialLamp/raw/master/intermediary/" + mcVer + ".tiny";
+	public Function<String, Object> intermediaryUrl = mcVer -> "https://maven.fabricmc.net/net/fabricmc/intermediary/" + mcVer + "/intermediary-" + mcVer + "-v2.jar";
 	public boolean useIntermediaryJar = true;
+	public boolean clientOnly = false;
 
 	private List<Path> unmappedModsBuilt = new ArrayList<>();
 
@@ -324,5 +325,11 @@ public class LoomGradleExtension {
 	public Function<String, String> getIntermediaryUrl() {
 		//Done like this to work around this possibly not being a java string...
 		return s -> intermediaryUrl.apply(s).toString();
+	}
+
+	public void useClassic() {
+		intermediaryUrl = mcVer -> "https://github.com/Juuxel/PotentialLamp/raw/master/intermediary/" + mcVer + ".tiny";
+		useIntermediaryJar = false;
+		clientOnly = true;
 	}
 }

@@ -47,6 +47,7 @@ import net.fabricmc.loom.util.DownloadUtil;
 import net.fabricmc.loom.util.ManifestVersion;
 import net.fabricmc.loom.util.MinecraftVersionInfo;
 import net.fabricmc.loom.util.StaticPathWatcher;
+import net.fabricmc.stitch.merge.JarMerger;
 
 public class MinecraftProvider extends DependencyProvider {
 	private String minecraftVersion;
@@ -176,20 +177,24 @@ public class MinecraftProvider extends DependencyProvider {
 			DownloadUtil.downloadIfChanged(new URL(versionInfo.downloads.get("client").url), minecraftClientJar, logger);
 		}
 
-		/*if (!minecraftServerJar.exists() || (!Checksum.equals(minecraftServerJar, versionInfo.downloads.get("server").sha1) && StaticPathWatcher.INSTANCE.hasFileChanged(minecraftServerJar.toPath()))) {
+		if (!getExtension().clientOnly && (!minecraftServerJar.exists() || (!Checksum.equals(minecraftServerJar, versionInfo.downloads.get("server").sha1) && StaticPathWatcher.INSTANCE.hasFileChanged(minecraftServerJar.toPath())))) {
 			logger.debug("Downloading Minecraft {} server jar", minecraftVersion);
 			DownloadUtil.downloadIfChanged(new URL(versionInfo.downloads.get("server").url), minecraftServerJar, logger);
-		}*/
+		}
 	}
 
 	private void mergeJars(Logger logger) throws IOException {
-		logger.lifecycle(":\"merging\" jars");
-		Files.copy(minecraftClientJar, minecraftMergedJar);
+		if (getExtension().clientOnly) {
+			logger.lifecycle(":\"merging\" jars");
+			Files.copy(minecraftClientJar, minecraftMergedJar);
+		} else {
+			logger.lifecycle(":merging jars");
 
-		/*try (JarMerger jarMerger = new JarMerger(minecraftClientJar, minecraftServerJar, minecraftMergedJar)) {
-			jarMerger.enableSyntheticParamsOffset();
-			jarMerger.merge();
-		}*/
+			try (JarMerger jarMerger = new JarMerger(minecraftClientJar, minecraftServerJar, minecraftMergedJar)) {
+				jarMerger.enableSyntheticParamsOffset();
+				jarMerger.merge();
+			}
+		}
 	}
 
 	public File getMergedJar() {
