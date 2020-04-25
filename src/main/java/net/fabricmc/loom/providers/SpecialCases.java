@@ -180,16 +180,22 @@ class SpecialCases {
 	}
 
 	static String intermediaries(String version) {
-		if (version.startsWith("c")) {
-			return "https://github.com/Juuxel/PotentialLamp/raw/master/intermediary/" + UrlEscapers.urlPathSegmentEscaper().escape(version) + ".tiny";
-		}
-
 		switch (version) {
 		case "1.2.5":
 			return "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5 Merge.tiny".replace(" ", "%20");
 
 		case "b1.7.3":
 			return "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/Beta 1.7.3 Merge.tiny".replace(" ", "%20");
+
+		case "c0.0.11a":
+		case "c0.0.13a":
+		case "c0.0.13a_03":
+		case "c0.30_01c":
+		case "rd-132211":
+		case "rd-132328":
+		case "rd-160052":
+		case "rd-161348":
+			return "https://github.com/Juuxel/PotentialLamp/raw/master/intermediary/" + version + ".tiny";
 
 		default:
 			return "https://github.com/FabricMC/intermediary/raw/master/mappings/" + UrlEscapers.urlPathSegmentEscaper().escape(version) + ".tiny";
