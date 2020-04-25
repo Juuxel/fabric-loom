@@ -41,6 +41,7 @@ import net.fabricmc.loom.dependencies.LogicalDependencyProvider;
 import net.fabricmc.loom.providers.openfine.Openfine;
 import net.fabricmc.loom.util.AccessTransformerHelper;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.ManifestRecycler;
 import net.fabricmc.loom.util.MapJarsTiny;
 import net.fabricmc.stitch.util.Pair;
 
@@ -111,6 +112,10 @@ public class MinecraftMappedProvider extends LogicalDependencyProvider {
             if (extension.hasOptiFine()) Openfine.applyBonusMappings(mappingsProvider.MAPPINGS_TINY);
             new MapJarsTiny().mapJars(minecraftProvider, this, project);
             if (!targets.isEmpty()) MapJarsTiny.transform(project, targets, this, mappingsProvider);
+            if (extension.removeManifest) {
+                project.getLogger().lifecycle(":removing manifest from mapped jar");
+                ManifestRecycler.removeManifest(getMappedJar());
+            }
         }
 
         if (!MINECRAFT_MAPPED_JAR.exists()) {
