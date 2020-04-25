@@ -180,6 +180,10 @@ class SpecialCases {
 	}
 
 	static String intermediaries(String version) {
+		if (version.startsWith("c")) {
+			return "https://github.com/Juuxel/PotentialLamp/raw/master/intermediary/" + UrlEscapers.urlPathSegmentEscaper().escape(version) + ".tiny";
+		}
+
 		switch (version) {
 		case "1.2.5":
 			return "https://gist.githubusercontent.com/Chocohead/b7ea04058776495a93ed2d13f34d697a/raw/1.2.5 Merge.tiny".replace(" ", "%20");
