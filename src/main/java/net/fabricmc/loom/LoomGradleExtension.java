@@ -77,7 +77,6 @@ public class LoomGradleExtension {
 	public boolean extractJars = false;
 	public String customManifest = null;
 	public String obfuscatedNamespace = "official";
-	public boolean removeManifest = false;
 
 	private JarMergeOrder mergeOrder = JarMergeOrder.INDIFFERENT;
 	private boolean bulldozeMappings;
@@ -377,6 +376,5 @@ public class LoomGradleExtension {
 	public void useClassicPreset() {
 		setJarMergeOrder(JarMergeOrder.CLIENT_ONLY);
 		obfuscatedNamespace = "client";
-		removeManifest = true;
 	}
 }
