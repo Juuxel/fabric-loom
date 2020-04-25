@@ -119,6 +119,10 @@ public class MappingsProvider extends LogicalDependencyProvider {
 		mappingFiles.add(mappings);
 	}
 
+	private static boolean isIntermediary(String name) {
+		return name.startsWith("net/minecraft/class_") || name.startsWith("com/mojang/minecraft/class_") || name.equals("com/mojang/minecraft/Minecraft");
+	}
+
 	@Override
 	public void provide(Project project, LoomGradleExtension extension, Consumer<Runnable> postPopulationScheduler) throws Exception {
 		MinecraftProvider minecraftProvider = getProvider(MinecraftProvider.class);
@@ -260,11 +264,11 @@ public class MappingsProvider extends LogicalDependencyProvider {
 					case Enigma: {
 						EnigmaReader.readEnigma(mapping.origin.toPath(), gains);
 
-						if (gains.stream().parallel().noneMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_") || classMapping.from.startsWith("com/mojang/minecraft/class_"))) {
+						if (gains.stream().parallel().noneMatch(classMapping -> isIntermediary(classMapping.from))) {
 							nativeNames = true;
 						} else {
-							assert gains.stream().parallel().filter(classMapping -> classMapping.to() != null).allMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_") || classMapping.from.startsWith("com/mojang/minecraft/class_") || classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")):
-								gains.stream().filter(classMapping -> classMapping.to() != null && !classMapping.from.startsWith("net/minecraft/class_") && !classMapping.from.startsWith("com/mojang/minecraft/class_") && !classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")).map(classMapping -> classMapping.from).collect(Collectors.joining(", ", "Found unexpected initial mapping classes: [", "]"));
+							assert gains.stream().parallel().filter(classMapping -> classMapping.to() != null).allMatch(classMapping -> isIntermediary(classMapping.from) || classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")):
+								gains.stream().filter(classMapping -> classMapping.to() != null && !isIntermediary(classMapping.from) && !classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")).map(classMapping -> classMapping.from).collect(Collectors.joining(", ", "Found unexpected initial mapping classes: [", "]"));
 							assert gains.streamMethods().parallel().filter(method -> method.name() != null).allMatch(method -> method.fromName.startsWith("method_") || method.fromName.equals(method.name())):
 								gains.streamMethods().filter(method -> method.name() != null && !method.fromName.startsWith("method_")).map(method -> method.fromName + method.fromDesc).collect(Collectors.joining(", ", "Found unexpected method mappings: ", "]"));
 							assert gains.streamFields().parallel().filter(field -> field.name() != null).allMatch(field -> field.fromName.startsWith("field_")):
