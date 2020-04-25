@@ -61,6 +61,7 @@ public class LoomGradleExtension {
 	public String customManifest = null;
 	public File accessWidener = null;
 	public Function<String, Object> intermediaryUrl = mcVer -> "https://github.com/Juuxel/PotentialLamp/raw/master/intermediary/" + mcVer + ".tiny";
+	public boolean useIntermediaryJar = true;
 
 	private List<Path> unmappedModsBuilt = new ArrayList<>();
 

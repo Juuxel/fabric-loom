@@ -44,6 +44,7 @@ import org.zeroturnaround.zip.FileSource;
 import org.zeroturnaround.zip.ZipEntrySource;
 import org.zeroturnaround.zip.ZipUtil;
 
+import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyProvider;
 import net.fabricmc.loom.util.DownloadUtil;
@@ -153,10 +154,12 @@ public class MappingsProvider extends DependencyProvider {
 			// Download and extract intermediary
 			String encodedMinecraftVersion = UrlEscapers.urlFragmentEscaper().escape(minecraftVersion);
 			String intermediaryArtifactUrl = getExtension().getIntermediaryUrl().apply(encodedMinecraftVersion);
-			Path intermediaryTiny = mappingsStepsDir.resolve("v2-intermediary-" + minecraftVersion + ".tiny");
-			DownloadUtil.downloadIfChanged(new URL(intermediaryArtifactUrl), intermediaryTiny.toFile(), project.getLogger());
+			LoomGradleExtension extension = project.getExtensions().getByType(LoomGradleExtension.class);
+			boolean intermediaryJar = extension.useIntermediaryJar;
+			Path intermediaryPath = mappingsStepsDir.resolve("v2-intermediary-" + minecraftVersion + (intermediaryJar ? ".jar" : ".tiny"));
+			DownloadUtil.downloadIfChanged(new URL(intermediaryArtifactUrl), intermediaryPath.toFile(), project.getLogger());
 
-			mergeAndSaveMappings(project, intermediaryTiny, yarnJar);
+			mergeAndSaveMappings(project, intermediaryPath, yarnJar, intermediaryJar);
 		} else {
 			// These are merged v1 mappings
 			if (tinyMappings.exists()) {
@@ -193,7 +196,20 @@ public class MappingsProvider extends DependencyProvider {
 		Files.copy(jar.getPath("mappings/mappings.tiny"), extractTo, StandardCopyOption.REPLACE_EXISTING);
 	}
 
-	private void mergeAndSaveMappings(Project project, Path unmergedIntermediary, Path unmergedYarnJar) throws IOException {
+	private void mergeAndSaveMappings(Project project, Path unmergedIntermediaryInput, Path unmergedYarnJar, boolean intermediaryJar) throws IOException {
+		Path unmergedIntermediary;
+
+		if (intermediaryJar) {
+			unmergedIntermediary = Paths.get(mappingsStepsDir.toString(), "unmerged-intermediary.tiny");
+			project.getLogger().info(":extracting " + unmergedIntermediaryInput.getFileName());
+
+			try (FileSystem unmergedIntermediaryFs = FileSystems.newFileSystem(unmergedIntermediaryInput, null)) {
+				extractMappings(unmergedIntermediaryFs, unmergedIntermediary);
+			}
+		} else {
+			unmergedIntermediary = unmergedIntermediaryInput;
+		}
+
 		Path unmergedYarn = Paths.get(mappingsStepsDir.toString(), "unmerged-yarn.tiny");
 		project.getLogger().info(":extracting " + unmergedYarnJar.getFileName());
 
