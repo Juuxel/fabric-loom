@@ -177,19 +177,20 @@ public class MinecraftProvider extends DependencyProvider {
 			DownloadUtil.downloadIfChanged(new URL(versionInfo.downloads.get("client").url), minecraftClientJar, logger);
 		}
 
-		if (!minecraftServerJar.exists() || (!Checksum.equals(minecraftServerJar, versionInfo.downloads.get("server").sha1) && StaticPathWatcher.INSTANCE.hasFileChanged(minecraftServerJar.toPath()))) {
+		/*if (!minecraftServerJar.exists() || (!Checksum.equals(minecraftServerJar, versionInfo.downloads.get("server").sha1) && StaticPathWatcher.INSTANCE.hasFileChanged(minecraftServerJar.toPath()))) {
 			logger.debug("Downloading Minecraft {} server jar", minecraftVersion);
 			DownloadUtil.downloadIfChanged(new URL(versionInfo.downloads.get("server").url), minecraftServerJar, logger);
-		}
+		}*/
 	}
 
 	private void mergeJars(Logger logger) throws IOException {
-		logger.lifecycle(":merging jars");
+		logger.lifecycle(":\"merging\" jars");
+		Files.copy(minecraftClientJar, minecraftMergedJar);
 
-		try (JarMerger jarMerger = new JarMerger(minecraftClientJar, minecraftServerJar, minecraftMergedJar)) {
+		/*try (JarMerger jarMerger = new JarMerger(minecraftClientJar, minecraftServerJar, minecraftMergedJar)) {
 			jarMerger.enableSyntheticParamsOffset();
 			jarMerger.merge();
-		}
+		}*/
 	}
 
 	public File getMergedJar() {
