@@ -240,6 +240,11 @@ public class MappingBlob implements IMappingAcceptor, Iterable<Mapping> {
 		return mappings.computeIfAbsent(srcName, Mapping::new);
 	}
 
+	public Mapping getOrDummy(String srcName) {
+		Mapping mapping = mappings.get(srcName);
+		return mapping != null ? mapping : new DummyMapping(srcName);
+	}
+
 	public String tryMapName(String srcName) {
 		Mapping mapping = mappings.get(srcName);
 		return mapping != null ? mapping.to : null;
