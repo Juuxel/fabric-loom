@@ -42,6 +42,9 @@ dependencies {
 	implementation ('net.fabricmc:stitch:0.4.3.71') {
 		exclude module: 'enigma'
 	}
+	implementation ('cuchaz:enigma:0.15.3+build.168:lib') {
+		transitive = false
+	}
 
 	// tinyfile management
 	implementation ('net.fabricmc:tiny-remapper:0.2.0.57') {

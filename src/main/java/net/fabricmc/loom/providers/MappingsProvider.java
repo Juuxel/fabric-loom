@@ -37,6 +37,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.function.Consumer;
 
 import com.google.common.net.UrlEscapers;
+import cuchaz.enigma.command.ConvertMappingsCommand;
 import org.apache.commons.io.FileUtils;
 import org.apache.tools.ant.util.StringUtils;
 import org.gradle.api.Project;
@@ -197,17 +198,25 @@ public class MappingsProvider extends DependencyProvider {
 	}
 
 	private void mergeAndSaveMappings(Project project, Path unmergedIntermediaryInput, Path unmergedYarnJar, boolean intermediaryJar) throws IOException {
-		Path unmergedIntermediary;
+		Path unmergedIntermediary = Paths.get(mappingsStepsDir.toString(), "unmerged-intermediary.tiny");
 
 		if (intermediaryJar) {
-			unmergedIntermediary = Paths.get(mappingsStepsDir.toString(), "unmerged-intermediary.tiny");
 			project.getLogger().info(":extracting " + unmergedIntermediaryInput.getFileName());
 
 			try (FileSystem unmergedIntermediaryFs = FileSystems.newFileSystem(unmergedIntermediaryInput, null)) {
 				extractMappings(unmergedIntermediaryFs, unmergedIntermediary);
 			}
 		} else {
-			unmergedIntermediary = unmergedIntermediaryInput;
+			try {
+				new ConvertMappingsCommand().run(
+						"tiny",
+						unmergedIntermediaryInput.toString(),
+						"tinyv2:official:intermediary",
+						unmergedIntermediary.toString()
+				);
+			} catch (Exception e) {
+				throw new RuntimeException("Could not convert v1 intermediaries to v2!", e);
+			}
 		}
 
 		Path unmergedYarn = Paths.get(mappingsStepsDir.toString(), "unmerged-yarn.tiny");
