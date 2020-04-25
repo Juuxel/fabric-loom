@@ -58,6 +58,7 @@ import net.fabricmc.mappings.EntryTriple;
 import net.fabricmc.mappings.Mappings;
 import net.fabricmc.mappings.MethodEntry;
 import net.fabricmc.stitch.util.Pair;
+import net.fabricmc.tinyremapper.NonClassCopyMode;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
 
@@ -113,10 +114,10 @@ public class MapJarsTiny {
 				.build();
 
 		try (OutputConsumerPath outputConsumer = new OutputConsumerPath(output.toPath())) {
-			outputConsumer.addNonClassFiles(input.toPath());
 			remapper.readClassPath(classpath);
 			remapper.readInputs(input.toPath());
 			remapper.apply(outputConsumer);
+			outputConsumer.addNonClassFiles(input.toPath(), NonClassCopyMode.FIX_META_INF, remapper);
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to remap JAR " + input + " with mappings from " + mappingsProvider.MAPPINGS_TINY, e);
 		} finally {

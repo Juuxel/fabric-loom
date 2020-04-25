@@ -29,6 +29,7 @@ import org.gradle.api.logging.Logger;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.util.MinecraftVersionInfo;
 import net.fabricmc.stitch.util.Pair;
+import net.fabricmc.tinyremapper.NonClassCopyMode;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
 import net.fabricmc.tinyremapper.TinyUtils;
@@ -117,10 +118,10 @@ public class SnappyRemapper {
 				.build();
 
 		try (OutputConsumerPath outputConsumer = new OutputConsumerPath(remappedJar)) {
-			outputConsumer.addNonClassFiles(originJar);
 			remapper.readClassPath(libraries.stream().map(File::toPath).distinct().toArray(Path[]::new));
 			remapper.readInputs(originJar);
 			remapper.apply(outputConsumer);
+			outputConsumer.addNonClassFiles(originJar, NonClassCopyMode.FIX_META_INF, remapper);
 		} catch (IOException e) {
 			throw new RuntimeException("Failed to remap JAR " + originJar + " with mappings from " + intermediaryMappings, e);
 		} finally {
