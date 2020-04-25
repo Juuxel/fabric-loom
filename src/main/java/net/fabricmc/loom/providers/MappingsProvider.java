@@ -153,10 +153,10 @@ public class MappingsProvider extends DependencyProvider {
 			// Download and extract intermediary
 			String encodedMinecraftVersion = UrlEscapers.urlFragmentEscaper().escape(minecraftVersion);
 			String intermediaryArtifactUrl = getExtension().getIntermediaryUrl().apply(encodedMinecraftVersion);
-			Path intermediaryJar = mappingsStepsDir.resolve("v2-intermediary-" + minecraftVersion + ".jar");
-			DownloadUtil.downloadIfChanged(new URL(intermediaryArtifactUrl), intermediaryJar.toFile(), project.getLogger());
+			Path intermediaryTiny = mappingsStepsDir.resolve("v2-intermediary-" + minecraftVersion + ".tiny");
+			DownloadUtil.downloadIfChanged(new URL(intermediaryArtifactUrl), intermediaryTiny.toFile(), project.getLogger());
 
-			mergeAndSaveMappings(project, intermediaryJar, yarnJar);
+			mergeAndSaveMappings(project, intermediaryTiny, yarnJar);
 		} else {
 			// These are merged v1 mappings
 			if (tinyMappings.exists()) {
@@ -193,14 +193,7 @@ public class MappingsProvider extends DependencyProvider {
 		Files.copy(jar.getPath("mappings/mappings.tiny"), extractTo, StandardCopyOption.REPLACE_EXISTING);
 	}
 
-	private void mergeAndSaveMappings(Project project, Path unmergedIntermediaryJar, Path unmergedYarnJar) throws IOException {
-		Path unmergedIntermediary = Paths.get(mappingsStepsDir.toString(), "unmerged-intermediary.tiny");
-		project.getLogger().info(":extracting " + unmergedIntermediaryJar.getFileName());
-
-		try (FileSystem unmergedIntermediaryFs = FileSystems.newFileSystem(unmergedIntermediaryJar, null)) {
-			extractMappings(unmergedIntermediaryFs, unmergedIntermediary);
-		}
-
+	private void mergeAndSaveMappings(Project project, Path unmergedIntermediary, Path unmergedYarnJar) throws IOException {
 		Path unmergedYarn = Paths.get(mappingsStepsDir.toString(), "unmerged-yarn.tiny");
 		project.getLogger().info(":extracting " + unmergedYarnJar.getFileName());
 
