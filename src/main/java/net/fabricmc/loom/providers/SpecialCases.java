@@ -195,7 +195,7 @@ class SpecialCases {
 		case "rd-132328":
 		case "rd-160052":
 		case "rd-161348":
-			return "https://github.com/Juuxel/PotentialLamp/raw/master/intermediary/" + version + ".tiny";
+			return "https://github.com/Juuxel/PotentialLamp/raw/intermediary_v2/intermediary/" + version + ".tiny";
 
 		default:
 			return "https://github.com/FabricMC/intermediary/raw/master/mappings/" + UrlEscapers.urlPathSegmentEscaper().escape(version) + ".tiny";
