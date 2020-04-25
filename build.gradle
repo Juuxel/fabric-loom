@@ -60,7 +60,7 @@ dependencies {
 	implementation ('com.github.Chocohead:tiny-remapper:505526e') {
 		transitive = false
 	}
-	implementation 'cuchaz:enigma:0.15.152:lib'
+	implementation 'cuchaz:enigma:0.15.3+build.168'
 	implementation 'com.bulenkov:darcula:2018.2'
 
 	// decompilers
