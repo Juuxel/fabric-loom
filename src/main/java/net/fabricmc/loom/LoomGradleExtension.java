@@ -76,6 +76,7 @@ public class LoomGradleExtension {
 	public boolean autoGenIDERuns = true;
 	public boolean extractJars = false;
 	public String customManifest = null;
+	public String obfuscatedNamespace = "official";
 
 	private JarMergeOrder mergeOrder = JarMergeOrder.INDIFFERENT;
 	private boolean bulldozeMappings;

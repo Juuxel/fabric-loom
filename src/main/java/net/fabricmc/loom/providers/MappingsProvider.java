@@ -122,6 +122,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 	@Override
 	public void provide(Project project, LoomGradleExtension extension, Consumer<Runnable> postPopulationScheduler) throws Exception {
 		MinecraftProvider minecraftProvider = getProvider(MinecraftProvider.class);
+		String obfNamespace = extension.obfuscatedNamespace;
 
 		initFiles(extension, project.getLogger(), minecraftProvider);
 
@@ -237,11 +238,12 @@ public class MappingsProvider extends LogicalDependencyProvider {
 						break free;
 					}
 
-					if (minecraftProvider.getMergeStrategy() != JarMergeOrder.FIRST) {
-						throw new UnsupportedOperationException("Mapping stacking only currently supports immediately merged jars");
-					}
+					// Juuz: comment out for classic
+					//if (minecraftProvider.getMergeStrategy() != JarMergeOrder.FIRST) {
+					//	throw new UnsupportedOperationException("Mapping stacking only currently supports immediately merged jars");
+					//}
 
-					TinyReader.readTiny(intermediaryNames.toPath(), "official", "intermediary", intermediaries = new MappingBlob());
+					TinyReader.readTiny(intermediaryNames.toPath(), obfNamespace, "intermediary", intermediaries = new MappingBlob());
 				}
 
 				MappingBlob inversion = intermediaries.invert(InvertionTarget.MEMBERS);
@@ -258,11 +260,11 @@ public class MappingsProvider extends LogicalDependencyProvider {
 					case Enigma: {
 						EnigmaReader.readEnigma(mapping.origin.toPath(), gains);
 
-						if (gains.stream().parallel().noneMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_"))) {
+						if (gains.stream().parallel().noneMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_") || classMapping.from.startsWith("com/mojang/minecraft/class_"))) {
 							nativeNames = true;
 						} else {
-							assert gains.stream().parallel().filter(classMapping -> classMapping.to() != null).allMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_") || classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")):
-								gains.stream().filter(classMapping -> classMapping.to() != null && !classMapping.from.startsWith("net/minecraft/class_") && !classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")).map(classMapping -> classMapping.from).collect(Collectors.joining(", ", "Found unexpected initial mapping classes: [", "]"));
+							assert gains.stream().parallel().filter(classMapping -> classMapping.to() != null).allMatch(classMapping -> classMapping.from.startsWith("net/minecraft/class_") || classMapping.from.startsWith("com/mojang/minecraft/class_") || classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")):
+								gains.stream().filter(classMapping -> classMapping.to() != null && !classMapping.from.startsWith("net/minecraft/class_") && !classMapping.from.startsWith("com/mojang/minecraft/class_") && !classMapping.from.matches("com\\/mojang\\/.+\\$class_\\d+")).map(classMapping -> classMapping.from).collect(Collectors.joining(", ", "Found unexpected initial mapping classes: [", "]"));
 							assert gains.streamMethods().parallel().filter(method -> method.name() != null).allMatch(method -> method.fromName.startsWith("method_") || method.fromName.equals(method.name())):
 								gains.streamMethods().filter(method -> method.name() != null && !method.fromName.startsWith("method_")).map(method -> method.fromName + method.fromDesc).collect(Collectors.joining(", ", "Found unexpected method mappings: ", "]"));
 							assert gains.streamFields().parallel().filter(field -> field.name() != null).allMatch(field -> field.fromName.startsWith("field_")):
@@ -285,7 +287,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 							}
 						}
 
-						String from = nativeNames ? "official" : "intermediary";
+						String from = nativeNames ? obfNamespace : "intermediary";
 						Path specialisedMappings = MAPPINGS_DIR.toPath().resolve(FilenameUtils.removeExtension(mapping.origin.getName()) + "-specialised.jar");
 						try (FileSystem fs = FileSystems.newFileSystem(new URI("jar:" + specialisedMappings.toUri()), Collections.singletonMap("create", "true"))) {
 							Path destination = fs.getPath("mappings/mappings.tiny");
@@ -308,7 +310,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 							origin = "intermediary";
 						} else {
 							nativeNames = true;
-							origin = "official";
+							origin = obfNamespace;
 						}
 						assert mapping.getNamespaces().contains("named");
 
@@ -341,7 +343,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 							origin = "intermediary";
 						} else {
 							nativeNames = true;
-							origin = "official";
+							origin = obfNamespace;
 						}
 						assert namespaces.contains("named");
 
@@ -362,7 +364,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 
 								MappingBlob inters = new MappingBlob();
 								try {
-									TinyReader.readTiny(intermediaryNames, "official", "intermediary", inters);
+									TinyReader.readTiny(intermediaryNames, obfNamespace, "intermediary", inters);
 								} catch (IOException e) {
 									throw new UncheckedIOException("Error reading Intermediary mappings for " + version, e);
 								}
@@ -441,7 +443,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 				MappingSplat combined = new MappingSplat(mappings.rename(inversion), intermediaries);
 
 				project.getLogger().lifecycle(":writing " + MAPPINGS_TINY_BASE.getName());
-				try (TinyWriter writer = new TinyWriter(MAPPINGS_TINY_BASE.toPath(), "official", "named", "intermediary")) {
+				try (TinyWriter writer = new TinyWriter(MAPPINGS_TINY_BASE.toPath(), obfNamespace, "named", "intermediary")) {
 					for (CombinedMapping mapping : combined) {
 						String notch = mapping.from;
 						if (mapping.hasNameChange()) writer.acceptClass(notch, mapping.to, mapping.fallback);
