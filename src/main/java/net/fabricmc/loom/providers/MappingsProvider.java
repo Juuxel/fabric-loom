@@ -292,6 +292,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 						}
 
 						String from = nativeNames ? obfNamespace : "intermediary";
+						System.out.println("Used namespace: " + from);
 						Path specialisedMappings = MAPPINGS_DIR.toPath().resolve(FilenameUtils.removeExtension(mapping.origin.getName()) + "-specialised.jar");
 						try (FileSystem fs = FileSystems.newFileSystem(new URI("jar:" + specialisedMappings.toUri()), Collections.singletonMap("create", "true"))) {
 							Path destination = fs.getPath("mappings/mappings.tiny");
