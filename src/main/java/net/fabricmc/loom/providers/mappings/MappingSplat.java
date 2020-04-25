@@ -186,7 +186,6 @@ public class MappingSplat implements Iterable<CombinedMapping> {
 
 		//Fallback should cover all of mapping's class names, with the potential for more it doesn't have
 		for (Mapping mapping : fallback) {
-			System.out.println("Fallback: " + mapping.from + " -> " + mapping.to);
 			String notch = mapping.from;
 			Mapping other = mappings.getOrDummy(notch);
 
@@ -236,7 +235,6 @@ public class MappingSplat implements Iterable<CombinedMapping> {
 		Map<String, Pair<String, Map<String, String>>> yarnOnlyMappings = new HashMap<>();
 
 		for (Mapping mapping : mappings) {
-			System.out.println("Main: " + mapping.from + " -> " + mapping.to);
 			String notch = mapping.from;
 
 			CombinedMapping combined = this.mappings.get(notch);
