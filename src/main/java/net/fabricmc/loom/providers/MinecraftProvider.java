@@ -47,7 +47,6 @@ import net.fabricmc.loom.util.DownloadUtil;
 import net.fabricmc.loom.util.ManifestVersion;
 import net.fabricmc.loom.util.MinecraftVersionInfo;
 import net.fabricmc.loom.util.StaticPathWatcher;
-import net.fabricmc.stitch.merge.JarMerger;
 
 public class MinecraftProvider extends DependencyProvider {
 	private String minecraftVersion;
