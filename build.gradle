@@ -64,7 +64,8 @@ dependencies {
 
 	// decompilers
 	implementation ('net.fabricmc:procyon-fabric-compilertools:0.5.35.+')
-	implementation ('com.github.Chocohead:ForgedFlower:c864803')
+	//implementation ('com.github.Chocohead:ForgedFlower:c864803')
+	implementation ('org.jetbrains:intellij-fernflower:1.1.0.11')
 
 	// source code remapping
 	implementation ('org.cadixdev:mercury:0.1.0.fabric-SNAPSHOT')
