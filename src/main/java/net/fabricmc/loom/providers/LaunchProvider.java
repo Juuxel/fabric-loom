@@ -73,7 +73,6 @@ public class LaunchProvider extends LogicalDependencyProvider {
 		}
 
 		writeLog4jConfig(extension);
-		FileUtils.writeStringToFile(extension.getDevLauncherConfig(), launchConfig.asString(), StandardCharsets.UTF_8);
 
 		if (GradleSupport.extractNatives(project)) {
 			launchConfig.property("client", "java.library.path", extension.getNativesDirectory().getAbsolutePath())
