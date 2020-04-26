@@ -121,12 +121,10 @@ public class ForkedFFExecutor {
 		Fernflower ff = new Fernflower(FernFlowerUtils::getBytecode, saver, options, logger);
 
 		for (File library : libraries) {
-            //ff.getStructContext().addSpace(library, false);
-			ff.addLibrary(library);
+            ff.getStructContext().addSpace(library, false);
 		}
 
-        //ff.getStructContext().addSpace(input, true);
-		ff.addSource(input);
+        ff.getStructContext().addSpace(input, true);
 		ff.decompileContext();
 	}
 }
