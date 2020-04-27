@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.function.BiConsumer;
 
+import net.fabricmc.loom.task.*;
 import org.gradle.api.Action;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
@@ -41,19 +42,6 @@ import org.gradle.api.tasks.TaskProvider;
 
 import net.fabricmc.loom.providers.MinecraftLibraryProvider;
 import net.fabricmc.loom.providers.MinecraftMappedProvider;
-import net.fabricmc.loom.task.AbstractDecompileTask;
-import net.fabricmc.loom.task.CleanLoomBinaries;
-import net.fabricmc.loom.task.CleanLoomMappings;
-import net.fabricmc.loom.task.DownloadAssetsTask;
-import net.fabricmc.loom.task.GenEclipseRunsTask;
-import net.fabricmc.loom.task.GenIdeaProjectTask;
-import net.fabricmc.loom.task.GenVsCodeProjectTask;
-import net.fabricmc.loom.task.MigrateMappingsTask;
-import net.fabricmc.loom.task.RemapJarTask;
-import net.fabricmc.loom.task.RemapLineNumbersTask;
-import net.fabricmc.loom.task.RemapSourcesJarTask;
-import net.fabricmc.loom.task.RunClientTask;
-import net.fabricmc.loom.task.RunServerTask;
 import net.fabricmc.loom.task.fernflower.FernFlowerTask;
 
 public class LoomGradlePlugin extends AbstractPlugin {
@@ -102,6 +90,23 @@ public class LoomGradlePlugin extends AbstractPlugin {
 			File mappedJar = minecraftProvider.getMappedJar();
 			File sourcesJar = getMappedByproduct(project, "-sources.jar");
 			File linemapFile = getMappedByproduct(project, "-sources.lmap");
+
+			task.setInput(mappedJar);
+			task.setOutput(sourcesJar);
+			task.setLineMapFile(linemapFile);
+			task.setLibraries(libraryProvider.getLibraries());
+		});
+
+		TaskProvider<CfrTask> cfrTask = register("cfr", CfrTask.class, t -> {
+			t.getOutputs().upToDateWhen((o) -> false);
+		}, (project, task) -> {
+			LoomGradleExtension extension = project.getExtensions().getByType(LoomGradleExtension.class);
+			MinecraftLibraryProvider libraryProvider = extension.getMinecraftProvider().getLibraryProvider();
+			MinecraftMappedProvider minecraftProvider = extension.getMinecraftMappedProvider();
+
+			File mappedJar = minecraftProvider.getMappedJar();
+			File sourcesJar = getMappedByproduct(project, "-cfr.jar");
+			File linemapFile = getMappedByproduct(project, "-cfr.lmap");
 
 			task.setInput(mappedJar);
 			task.setOutput(sourcesJar);
