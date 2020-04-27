@@ -74,18 +74,18 @@ public class ProcyonTask extends AbstractDecompileTask {
                 for (Path rootDirectory : inputFs.getRootDirectories()) {
                     Files.find(rootDirectory, Integer.MAX_VALUE, (path, attributes) -> attributes.isRegularFile()).forEach(it -> {
                         try {
-                            Path relative = rootDirectory.relativize(it);
-                            String relativePath = relative.toString();
-                            String className = relativePath.substring(0, relativePath.length() - ".class".length());
-
-                            Path target = rootDirectory.resolve(className + ".java");
-                            Path parent = target.getParent();
-
-                            if (parent != null) {
-                                Files.createDirectories(parent);
-                            }
-
                             if (it.endsWith(".class")) {
+                                Path relative = rootDirectory.relativize(it);
+                                String relativePath = relative.toString();
+                                String className = relativePath.substring(0, relativePath.length() - ".class".length());
+
+                                Path target = outputFs.getPath(className + ".java");
+                                Path parent = target.getParent();
+
+                                if (parent != null) {
+                                    Files.createDirectories(parent);
+                                }
+
                                 TypeReference type = metadataSystem.lookupType(className);
                                 TypeDefinition resolvedType = type.resolve();
 
@@ -94,6 +94,14 @@ public class ProcyonTask extends AbstractDecompileTask {
                                     settings.getLanguage().decompileType(resolvedType, output, options);
                                 }
                             } else {
+                                Path relative = rootDirectory.relativize(it);
+                                Path target = outputFs.getPath(relative.toString());
+                                Path parent = target.getParent();
+
+                                if (parent != null) {
+                                    Files.createDirectories(parent);
+                                }
+
                                 Files.copy(it, target);
                             }
                         } catch (IOException e) {
