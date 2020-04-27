@@ -44,7 +44,7 @@ import java.util.List;
 public class CfrTask extends AbstractDecompileTask {
     @TaskAction
     public void doTask() throws Throwable {
-        try (FileSystem outputFs = FileSystems.newFileSystem(new URI("jar:" + getOutput().toURI()), ImmutableMap.of("create", "true"))) {
+        try (FileSystem outputFs = DecompilerUtil.getJarFileSystem(getOutput(), true)) {
             OutputSinkFactory sink = new OutputSinkFactory() {
                 @Override
                 public List<SinkClass> getSupportedSinks(SinkType sinkType, Collection<SinkClass> available) {

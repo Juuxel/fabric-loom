@@ -114,6 +114,23 @@ public class LoomGradlePlugin extends AbstractPlugin {
 			task.setLibraries(libraryProvider.getLibraries());
 		});
 
+		TaskProvider<ProcyonTask> procyonTask = register("procyon", ProcyonTask.class, t -> {
+			t.getOutputs().upToDateWhen((o) -> false);
+		}, (project, task) -> {
+			LoomGradleExtension extension = project.getExtensions().getByType(LoomGradleExtension.class);
+			MinecraftLibraryProvider libraryProvider = extension.getMinecraftProvider().getLibraryProvider();
+			MinecraftMappedProvider minecraftProvider = extension.getMinecraftMappedProvider();
+
+			File mappedJar = minecraftProvider.getMappedJar();
+			File sourcesJar = getMappedByproduct(project, "-procyon.jar");
+			File linemapFile = getMappedByproduct(project, "-procyon.lmap");
+
+			task.setInput(mappedJar);
+			task.setOutput(sourcesJar);
+			task.setLineMapFile(linemapFile);
+			task.setLibraries(libraryProvider.getLibraries());
+		});
+
 		TaskProvider<RemapLineNumbersTask> remapLineNumbersTask = register("genSourcesRemapLineNumbers", RemapLineNumbersTask.class, t -> {
 			t.getOutputs().upToDateWhen((o) -> false);
 		}, (project, task) -> {
