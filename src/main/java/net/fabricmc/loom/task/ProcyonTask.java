@@ -71,7 +71,7 @@ public class ProcyonTask extends AbstractDecompileTask {
             options.setSettings(settings);
 
             for (Path rootDirectory : outputFs.getRootDirectories()) {
-                Files.walk(rootDirectory).filter(it -> !Files.isDirectory(it)).forEach(it -> {
+                Files.walk(rootDirectory).flatMap(DecompilerUtil.uncheck(Files::list)).forEach(it -> {
                     try {
                         Path relative = rootDirectory.relativize(it);
                         String relativePath = relative.toString();

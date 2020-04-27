@@ -32,6 +32,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
+import java.util.function.Function;
 
 final class DecompilerUtil {
     static FileSystem getJarFileSystem(File jar, boolean create) throws IOException {
@@ -40,5 +41,19 @@ final class DecompilerUtil {
         } catch (URISyntaxException e) {
             throw new IOException("Could not create URI", e);
         }
+    }
+
+    static <A, B> Function<A, B> uncheck(ThrowingFunction<A, B> fn) {
+        return a -> {
+            try {
+                return fn.apply(a);
+            } catch (Exception e) {
+                throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);
+            }
+        };
+    }
+
+    interface ThrowingFunction<A, B> {
+        B apply(A a) throws Exception;
     }
 }
