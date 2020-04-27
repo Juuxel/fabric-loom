@@ -93,6 +93,7 @@ public class CfrTask extends AbstractDecompileTask {
             Path path = fs.getPath(sinkable.getPackageName().replace(".", fs.getSeparator()), sinkable.getClassName() + ".java");
 
             try {
+                Files.createDirectories(path.getParent());
                 Files.write(path, Collections.singleton(sinkable.getJava()));
             } catch (IOException e) {
                 getProject().getLogger().error("Could not save class " + path, e);
