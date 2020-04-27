@@ -70,35 +70,37 @@ public class ProcyonTask extends AbstractDecompileTask {
             DecompilationOptions options = new DecompilationOptions();
             options.setSettings(settings);
 
-            for (Path rootDirectory : outputFs.getRootDirectories()) {
-                Files.walk(rootDirectory).flatMap(DecompilerUtil.uncheck(Files::list)).forEach(it -> {
-                    try {
-                        Path relative = rootDirectory.relativize(it);
-                        String relativePath = relative.toString();
-                        String className = relativePath.substring(0, relativePath.length() - ".class".length());
+            try (FileSystem inputFs = DecompilerUtil.getJarFileSystem(getInput(), false)) {
+                for (Path rootDirectory : inputFs.getRootDirectories()) {
+                    Files.find(rootDirectory, Integer.MAX_VALUE, (path, attributes) -> attributes.isRegularFile()).forEach(it -> {
+                        try {
+                            Path relative = rootDirectory.relativize(it);
+                            String relativePath = relative.toString();
+                            String className = relativePath.substring(0, relativePath.length() - ".class".length());
 
-                        Path target = rootDirectory.resolve(className + ".java");
-                        Path parent = target.getParent();
+                            Path target = rootDirectory.resolve(className + ".java");
+                            Path parent = target.getParent();
 
-                        if (parent != null) {
-                            Files.createDirectories(parent);
-                        }
-
-                        if (it.endsWith(".class")) {
-                            TypeReference type = metadataSystem.lookupType(className);
-                            TypeDefinition resolvedType = type.resolve();
-
-                            try (Writer writer = Files.newBufferedWriter(target)) {
-                                PlainTextOutput output = new PlainTextOutput(writer);
-                                settings.getLanguage().decompileType(resolvedType, output, options);
+                            if (parent != null) {
+                                Files.createDirectories(parent);
                             }
-                        } else {
-                            Files.copy(it, target);
+
+                            if (it.endsWith(".class")) {
+                                TypeReference type = metadataSystem.lookupType(className);
+                                TypeDefinition resolvedType = type.resolve();
+
+                                try (Writer writer = Files.newBufferedWriter(target)) {
+                                    PlainTextOutput output = new PlainTextOutput(writer);
+                                    settings.getLanguage().decompileType(resolvedType, output, options);
+                                }
+                            } else {
+                                Files.copy(it, target);
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
                         }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+                    });
+                }
             }
         }
     }
