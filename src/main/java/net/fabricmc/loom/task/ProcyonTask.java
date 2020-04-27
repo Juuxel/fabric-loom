@@ -58,6 +58,7 @@ public class ProcyonTask extends AbstractDecompileTask {
             ITypeLoader typeLoader = new CompositeTypeLoader(typeLoaders.toArray(new ITypeLoader[0]));
 
             DecompilerSettings settings = DecompilerSettings.javaDefaults();
+            settings.setForceExplicitImports(true);
             settings.setShowSyntheticMembers(true);
             settings.setTypeLoader(typeLoader);
 
