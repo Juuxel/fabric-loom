@@ -74,7 +74,7 @@ public class ProcyonTask extends AbstractDecompileTask {
                 for (Path rootDirectory : inputFs.getRootDirectories()) {
                     Files.find(rootDirectory, Integer.MAX_VALUE, (path, attributes) -> attributes.isRegularFile()).forEach(it -> {
                         try {
-                            if (it.endsWith(".class")) {
+                            if (it.toString().endsWith(".class")) {
                                 Path relative = rootDirectory.relativize(it);
                                 String relativePath = relative.toString();
                                 String className = relativePath.substring(0, relativePath.length() - ".class".length());
