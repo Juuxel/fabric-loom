@@ -24,6 +24,7 @@
 
 package net.fabricmc.loom.task;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import java.io.File;
@@ -32,7 +33,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
-import java.util.function.Function;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 final class DecompilerUtil {
     static FileSystem getJarFileSystem(File jar, boolean create) throws IOException {
@@ -43,17 +46,46 @@ final class DecompilerUtil {
         }
     }
 
-    static <A, B> Function<A, B> uncheck(ThrowingFunction<A, B> fn) {
-        return a -> {
-            try {
-                return fn.apply(a);
-            } catch (Exception e) {
-                throw e instanceof RuntimeException ? (RuntimeException) e : new RuntimeException(e);
-            }
-        };
-    }
+    static List<String> sortImports(String[] lines) {
+        boolean foundImports = false;
+        int importStart = -1; // inclusive
+        int importEnd = -1;   // exclusive
 
-    interface ThrowingFunction<A, B> {
-        B apply(A a) throws Exception;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+
+            if (line.startsWith("import ")) {
+                if (!foundImports) {
+                    foundImports = true;
+                    importStart = i;
+                }
+            } else if (foundImports) {
+                importEnd = i;
+            }
+        }
+
+        if (!foundImports) {
+            return ImmutableList.copyOf(lines);
+        }
+
+        String[] imports = new String[importEnd - importStart];
+        System.arraycopy(lines, importStart, imports, 0, imports.length);
+        Arrays.sort(imports);
+
+        List<String> result = new ArrayList<>();
+
+        for (int i = 0; i < importStart; i++) {
+            result.add(lines[i]);
+        }
+
+        for (String line :imports){
+            result.add(line);
+        }
+
+        for (int i = importEnd; i < lines.length; i++) {
+            result.add(lines[i]);
+        }
+
+        return result;
     }
 }

@@ -33,9 +33,8 @@ import com.strobel.decompiler.languages.java.JavaFormattingOptions;
 import cuchaz.enigma.source.procyon.typeloader.NoRetryMetadataSystem;
 import org.gradle.api.tasks.TaskAction;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Writer;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -90,9 +89,16 @@ public class ProcyonTask extends AbstractDecompileTask {
                                 TypeReference type = metadataSystem.lookupType(className);
                                 TypeDefinition resolvedType = type.resolve();
 
-                                try (Writer writer = Files.newBufferedWriter(target)) {
+                                try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                                     Writer writer = new OutputStreamWriter(out)) {
                                     PlainTextOutput output = new PlainTextOutput(writer);
                                     settings.getLanguage().decompileType(resolvedType, output, options);
+
+                                    writer.flush();
+                                    byte[] bytes = out.toByteArray();
+                                    String code = new String(bytes, StandardCharsets.UTF_8);
+                                    String[] lines = code.split("\n");
+                                    Files.write(target, DecompilerUtil.sortImports(lines), StandardCharsets.UTF_8);
                                 }
                             } else {
                                 Path relative = rootDirectory.relativize(it);
