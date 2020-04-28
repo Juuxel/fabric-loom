@@ -47,7 +47,7 @@ final class DecompilerUtil {
     }
 
     static List<String> sortImports(String[] lines) {
-        boolean foundImports = false;
+        boolean insideImports = false;
         int importStart = -1; // inclusive
         int importEnd = -1;   // exclusive
 
@@ -55,16 +55,17 @@ final class DecompilerUtil {
             String line = lines[i];
 
             if (line.startsWith("import ")) {
-                if (!foundImports) {
-                    foundImports = true;
+                if (!insideImports) {
+                    insideImports = true;
                     importStart = i;
                 }
-            } else if (foundImports) {
+            } else if (insideImports) {
+                insideImports = false;
                 importEnd = i;
             }
         }
 
-        if (!foundImports) {
+        if (importStart == -1) {
             return ImmutableList.copyOf(lines);
         }
 
@@ -78,7 +79,7 @@ final class DecompilerUtil {
             result.add(lines[i]);
         }
 
-        for (String line :imports){
+        for (String line : imports) {
             result.add(line);
         }
 
