@@ -32,6 +32,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 import org.gradle.api.internal.project.ProjectInternal;
@@ -48,16 +50,20 @@ import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger.Severity;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 
 import net.fabricmc.loom.task.AbstractDecompileTask;
-import net.fabricmc.loom.task.ForkingJavaExecTask;
 import net.fabricmc.loom.util.ConsumingOutputStream;
 import net.fabricmc.loom.util.OperatingSystem;
 
 /**
  * Created by covers1624 on 9/02/19.
  */
-public class FernFlowerTask extends AbstractDecompileTask implements ForkingJavaExecTask {
+public class FernFlowerTask extends AbstractDecompileTask {
+	private static final Map<String, AtomicBoolean> DECOMPILE_CLAIMER = new ConcurrentHashMap<>();
 	private boolean noFork = false;
 	private int numThreads = Runtime.getRuntime().availableProcessors();
+
+	public boolean shouldRun() {
+		return !DECOMPILE_CLAIMER.computeIfAbsent(getExtension().getMinecraftProvider().minecraftVersion, k -> new AtomicBoolean()).getAndSet(true);
+	}
 
 	@TaskAction
 	public void doTask() throws Throwable {
@@ -151,7 +157,8 @@ public class FernFlowerTask extends AbstractDecompileTask implements ForkingJava
 	        progressGroup.started();
 
 	        if (!isNoFork()) {
-		        ExecResult result = javaexec(spec -> {
+		        ExecResult result = getProject().javaexec(spec -> {
+		        	spec.classpath(getExtension().getFernFlowerClasspath());
 		            spec.setMain(ForkedFFExecutor.class.getName());
 		            spec.jvmArgs("-Xms200m", "-Xmx3G");
 		            spec.setArgs(args);

@@ -37,8 +37,6 @@ import org.gradle.api.Project;
 import org.gradle.api.tasks.JavaExec;
 
 import net.fabricmc.loom.LoomGradleExtension;
-import net.fabricmc.loom.providers.MappingsProvider;
-import net.fabricmc.loom.util.MinecraftVersionInfo;
 import net.fabricmc.loom.util.RunConfig;
 
 public abstract class AbstractRunTask extends JavaExec {
@@ -58,8 +56,6 @@ public abstract class AbstractRunTask extends JavaExec {
 		}
 
 		LoomGradleExtension extension = this.getProject().getExtensions().getByType(LoomGradleExtension.class);
-		MinecraftVersionInfo minecraftVersionInfo = extension.getMinecraftProvider().versionInfo;
-		MappingsProvider mappingsProvider = extension.getMappingsProvider();
 
 		List<String> libs = new ArrayList<>();
 
@@ -136,7 +132,6 @@ public abstract class AbstractRunTask extends JavaExec {
 			config = configProvider.apply(getProject());
 		}
 
-		LoomGradleExtension extension = this.getProject().getExtensions().getByType(LoomGradleExtension.class);
 		List<String> superArgs = super.getJvmArgs();
 		List<String> args = new ArrayList<>(superArgs != null ? superArgs : Collections.emptyList());
 		args.addAll(Arrays.asList(config.vmArgs.split(" ")));

@@ -46,10 +46,15 @@ import org.cadixdev.mercury.Mercury;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.artifacts.ModuleVersionIdentifier;
+import org.gradle.api.artifacts.ResolvedArtifact;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.initialization.dsl.ScriptHandler;
 import org.gradle.api.plugins.BasePluginConvention;
 
 import net.fabricmc.loom.dependencies.LoomDependencyManager;
+import net.fabricmc.loom.providers.JarNameFactory;
 import net.fabricmc.loom.providers.MappingsProvider;
 import net.fabricmc.loom.providers.MinecraftMappedProvider;
 import net.fabricmc.loom.providers.MinecraftProvider;
@@ -58,15 +63,30 @@ public class LoomGradleExtension {
 	/** The order in which the Minecraft client and server jars should be merged together and remapped */
 	public enum JarMergeOrder {
 		/** Run based on whether the Minecraft version is from before 23th July 2012 */
-		INDIFFERENT,
+		INDIFFERENT(null) {
+			@Override
+			public String getJarName(String version) {
+				throw new UnsupportedOperationException("Cannot get jar name of indifferent merge order");
+			}
+		},
 		/** Always merge jars before mappings are present, regardless of version */
-		FIRST,
+		FIRST(JarNameFactory.MERGED),
 		/** Always remap jars before merging, regardless of version */
-		LAST,
+		LAST(JarNameFactory.MERGED_INTERMEDIARY),
 		/** Don't merge the jars at all, instead just use the client jar */
-		CLIENT_ONLY,
+		CLIENT_ONLY(JarNameFactory.CLIENT),
 		/** Don't merge the jars at all, instead just use the server jar */
-		SERVER_ONLY;
+		SERVER_ONLY(JarNameFactory.SERVER);
+
+		private JarMergeOrder(JarNameFactory namer) {
+			this.namer = namer;
+		}
+
+		public String getJarName(String version) {
+			return namer.getJarName(version);
+		}
+
+		private JarNameFactory namer;
 	}
 	public String runDir = "run";
 	public String refmapName;
@@ -204,15 +224,17 @@ public class LoomGradleExtension {
 	}
 
 	@Nullable
-	private static Dependency findDependency(Project p, Collection<Configuration> configs, BiPredicate<String, String> groupNameFilter) {
+	private static ModuleVersionIdentifier findDependency(Project p, Collection<Configuration> configs, BiPredicate<String, String> groupNameFilter) {
 		for (Configuration config : configs) {
-			for (Dependency dependency : config.getDependencies()) {
-				String group = dependency.getGroup();
-				String name = dependency.getName();
+			for (ResolvedArtifact artifact : config.getResolvedConfiguration().getResolvedArtifacts()) {
+				ModuleVersionIdentifier module = artifact.getModuleVersion().getId();
+
+				String group = module.getGroup();
+				String name = module.getName();
 
 				if (groupNameFilter.test(group, name)) {
-					p.getLogger().debug("Loom findDependency found: " + group + ":" + name + ":" + dependency.getVersion());
-					return dependency;
+					p.getLogger().debug("Loom findDependency found: " + group + ':' + name + ':' + module.getVersion());
+					return module;
 				}
 			}
 		}
@@ -238,7 +260,7 @@ public class LoomGradleExtension {
 	}
 
 	@Nullable
-	private Dependency getMixinDependency() {
+	private ModuleVersionIdentifier getMixinDependency() {
 		return recurseProjects((p) -> {
 			List<Configuration> configs = new ArrayList<>();
 			// check compile classpath first
@@ -267,7 +289,7 @@ public class LoomGradleExtension {
 
 	@Nullable
 	public String getMixinJsonVersion() {
-		Dependency dependency = getMixinDependency();
+		ModuleVersionIdentifier dependency = getMixinDependency();
 
 		if (dependency != null) {
 			if (dependency.getGroup().equalsIgnoreCase("net.fabricmc")) {
@@ -280,6 +302,21 @@ public class LoomGradleExtension {
 		}
 
 		return null;
+	}
+
+	public FileCollection getFernFlowerClasspath() {
+		return recurseProjects(project -> {
+			ConfigurationContainer configurations = project.getBuildscript().getConfigurations();
+			Configuration fileClasspath = configurations.getByName(ScriptHandler.CLASSPATH_CONFIGURATION);
+
+			if (findDependency(project, Collections.singleton(fileClasspath), (group, name) -> {
+				return "com.github.Chocohead".equalsIgnoreCase(group) && "ForgedFlower".equalsIgnoreCase(name);
+			}) != null) {
+				return fileClasspath.plus(configurations.detachedConfiguration(project.getDependencies().localGroovy()));
+			} else {
+				return null;
+			}
+		});
 	}
 
 	public String getLoaderLaunchMethod() {

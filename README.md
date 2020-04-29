@@ -65,8 +65,9 @@ Stock Version | Sin² Branch | Example Sin² Version
 0.2.3 | [*\<Floating\>*](https://github.com/Chocohead/fabric-loom/compare/f2fc524...32e0cc5) | **c4551b3** and **32e0cc5**
 0.2.4 | [openfine](https://github.com/Chocohead/fabric-loom/tree/openfine) | **7eb4201**
 0.2.5 | [dust](https://github.com/Chocohead/fabric-loom/tree/dust) | **5784f06**
-0.2.6 | *\<None\>* | -
-0.2.7 | [leaf](https://github.com/Chocohead/fabric-loom/tree/leaf) | **e131f8f**
+0.2.6 | [leaf](https://github.com/Chocohead/fabric-loom/tree/leaf) | **1fc286d**
+0.2.7 | *\<None\>* | -
+0.4.x | *\<None\>* | -
 
 
 ## How do I use the new things?

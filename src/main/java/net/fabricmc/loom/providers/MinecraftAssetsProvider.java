@@ -53,8 +53,7 @@ public class MinecraftAssetsProvider {
 		LoomGradleExtension extension = project.getExtensions().getByType(LoomGradleExtension.class);
 		boolean offline = project.getGradle().getStartParameter().isOffline();
 
-		MinecraftVersionInfo versionInfo = minecraftProvider.versionInfo;
-		MinecraftVersionInfo.AssetIndex assetIndex = versionInfo.assetIndex;
+		MinecraftVersionInfo.AssetIndex assetIndex = minecraftProvider.getAssetIndex();
 
 		// get existing cache files
 		File assets = new File(extension.getUserCache(), "assets");

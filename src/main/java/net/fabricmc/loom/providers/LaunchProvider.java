@@ -61,7 +61,7 @@ public class LaunchProvider extends LogicalDependencyProvider {
 				.property("log4j.configurationFile", getLog4jConfigFile(extension).getAbsolutePath())
 
 				.argument("client", "--assetIndex")
-				.argument("client", extension.getMinecraftProvider().versionInfo.assetIndex.getFabricId(extension.getMinecraftProvider().minecraftVersion))
+				.argument("client", extension.getMinecraftProvider().getAssetIndex().getFabricId(extension.getMinecraftProvider().minecraftVersion))
 				.argument("client", "--assetsDir")
 				.argument("client", new File(extension.getUserCache(), "assets").getAbsolutePath());
 

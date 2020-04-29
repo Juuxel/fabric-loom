@@ -40,12 +40,11 @@ public class MinecraftNativesProvider {
 	public static void provide(MinecraftProvider minecraftProvider, Project project) throws IOException {
 		if (!GradleSupport.extractNatives(project)) return; //No need to do this
 		LoomGradleExtension extension = project.getExtensions().getByType(LoomGradleExtension.class);
-		MinecraftVersionInfo versionInfo = minecraftProvider.versionInfo;
 
 		File nativesDir = extension.getNativesDirectory();
 		File jarStore = extension.getNativesJarStore();
 
-		for (MinecraftVersionInfo.Library library : versionInfo.libraries) {
+		for (MinecraftVersionInfo.Library library : minecraftProvider.getLibraries()) {
 			File libJarFile = library.getFile(jarStore);
 
 			if (library.allowed() && library.isNative() && libJarFile != null) {

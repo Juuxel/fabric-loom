@@ -24,7 +24,9 @@
 
 package net.fabricmc.loom.dependencies;
 
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
+import org.gradle.api.plugins.JavaPlugin;
 
 public class RemappedConfigurationEntry {
 	private final String sourceConfiguration;
@@ -59,11 +61,8 @@ public class RemappedConfigurationEntry {
 		return sourceConfiguration + "Mapped";
 	}
 
-	public String getTargetConfiguration(ConfigurationContainer container) {
-		if (container.findByName(targetConfiguration) == null) {
-			return "compile";
-		}
-
-		return targetConfiguration;
+	public Configuration getTargetConfiguration(ConfigurationContainer container) {
+		Configuration out = container.findByName(targetConfiguration);
+		return out != null ? out : container.getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME);
 	}
 }

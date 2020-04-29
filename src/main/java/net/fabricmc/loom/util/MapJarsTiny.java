@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.UnaryOperator;
@@ -43,14 +45,15 @@ import java.util.stream.Collectors;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
+
 import org.zeroturnaround.zip.ZipUtil;
 
-import com.google.common.io.Files;
-
 import net.fabricmc.loom.LoomGradleExtension;
+import net.fabricmc.loom.providers.JarNameFactory;
 import net.fabricmc.loom.providers.MappingsProvider;
 import net.fabricmc.loom.providers.MinecraftMappedProvider;
 import net.fabricmc.loom.providers.MinecraftProvider;
+import net.fabricmc.loom.providers.MinecraftVersionAdaptable;
 import net.fabricmc.loom.providers.mappings.MappingSplat;
 import net.fabricmc.loom.util.AccessTransformerHelper.ZipEntryAT;
 import net.fabricmc.mappings.ClassEntry;
@@ -58,9 +61,11 @@ import net.fabricmc.mappings.EntryTriple;
 import net.fabricmc.mappings.Mappings;
 import net.fabricmc.mappings.MethodEntry;
 import net.fabricmc.stitch.util.Pair;
+import net.fabricmc.tinyremapper.IMappingProvider;
 import net.fabricmc.tinyremapper.NonClassCopyMode;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
+import net.fabricmc.tinyremapper.TinyUtils;
 
 public class MapJarsTiny {
 	public void mapJars(MinecraftProvider jarProvider, MinecraftMappedProvider mapProvider, Project project) throws IOException {
@@ -86,9 +91,9 @@ public class MapJarsTiny {
 
 			case LAST:
 				if (!mapProvider.getIntermediaryJar().exists()) {//It may already exist if the merged jar is purely in Intermediary names
-					Files.copy(jarProvider.getMergedJar(), mapProvider.getIntermediaryJar());
+					Files.copy(jarProvider.getMergedJar(), mapProvider.getIntermediaryJar().toPath());
 				} else {
-					assert jarProvider.getMergedJar().equals(mapProvider.getIntermediaryJar());
+					assert jarProvider.getMergedJar().toFile().equals(mapProvider.getIntermediaryJar());
 				}
 				break interJar;
 
@@ -100,26 +105,78 @@ public class MapJarsTiny {
 			mapJar(project.getLogger(), extension, mappingsProvider, jarProvider.getMergedJar(), classpath, mapProvider.getIntermediaryJar(), fromM, "intermediary");
 		}
 
-		mapJar(project.getLogger(), extension, mappingsProvider, mapProvider.getIntermediaryJar(), classpath, mapProvider.getMappedJar(), "intermediary", "named");
+		mapJar(project.getLogger(), extension, mappingsProvider, mapProvider.getIntermediaryJar().toPath(), classpath, mapProvider.getMappedJar(), "intermediary", "named");
 	}
 
-	private static void mapJar(Logger logger, LoomGradleExtension extension, MappingsProvider mappingsProvider, File input, Path[] classpath, File output, String fromM, String toM) throws IOException {
-		logger.lifecycle(":remapping minecraft (TinyRemapper, " + fromM + " -> " + toM + ')');
+	private static void mapJar(Logger logger, LoomGradleExtension extension, MappingsProvider mappingsProvider, Path input, Path[] classpath, File output, String fromM, String toM) throws IOException {
+		remapJar(logger, input, mappingsProvider.mcRemappingFactory.create(fromM, toM), extension.shouldBulldozeMappings(), classpath, output.toPath(), fromM, toM);
+	}
+
+	public static Path makeInterJar(Project project, LoomGradleExtension extension, MinecraftVersionAdaptable version, Optional<Path> intermediaryMappings) throws IOException {
+		String fromM;
+		JarNameFactory nameFactory;
+		switch (version.getMergeStrategy()) {
+		case FIRST:
+			fromM = "official";
+			nameFactory = JarNameFactory.MERGED_INTERMEDIARY;
+			break;
+
+		case CLIENT_ONLY:
+			fromM = "client";
+			nameFactory = JarNameFactory.CLIENT_INTERMEDIARY;
+			break;
+
+		case SERVER_ONLY:
+			fromM = "server";
+			nameFactory = JarNameFactory.SERVER_INTERMEDIARY;
+			break;
+
+		case LAST:
+			if (version.needsIntermediaries()) {
+				version.giveIntermediaries(intermediaryMappings.orElseGet(() -> MappingsProvider.getIntermediaries(extension, version.getName())));
+			}
+
+			return version.getMergedJar();
+
+		case INDIFFERENT:
+		default:
+			throw new IllegalStateException("Unexpected jar merge strategy " + version.getMergeStrategy());
+		}
+
+		Path interJar = extension.getUserCache().toPath().resolve(nameFactory.getJarName(version.getName()));
+
+		if (Files.notExists(interJar)) {
+			remapJar(project.getLogger(), version.getMergedJar(), //Long method calls are long
+					intermediaryMappings.orElseGet(() -> MappingsProvider.getIntermediaries(extension, version.getName())),
+					false, version.getJavaLibraries(project), interJar, fromM);
+		}
+
+		return interJar;
+	}
+
+	public static void remapJar(Logger logger, Path originJar, Path intermediaryMappings, boolean bulldoze, Set<File> libraries, Path remappedJar, String originMappings) {
+		remapJar(logger, originJar,
+				TinyUtils.createTinyMappingProvider(intermediaryMappings, originMappings, "intermediary"),
+				bulldoze, libraries.toArray(new Path[0]), remappedJar, originMappings, "intermediary");
+	}
+
+	private static void remapJar(Logger logger, Path input, IMappingProvider mappings, boolean bulldozeMappings, Path[] classpath, Path output, String fromM, String toM) {
+		logger.lifecycle(":Remapping minecraft (TinyRemapper, " + fromM + " -> " + toM + ')');
 
 		TinyRemapper remapper = TinyRemapper.newRemapper()
-				.withMappings(mappingsProvider.mcRemappingFactory.create(fromM, toM))
-				.ignoreConflicts(extension.shouldBulldozeMappings())
+				.withMappings(mappings)
+				.ignoreConflicts(bulldozeMappings)
 				.renameInvalidLocals(true)
 				.rebuildSourceFilenames(true)
 				.build();
 
-		try (OutputConsumerPath outputConsumer = new OutputConsumerPath(output.toPath())) {
+		try (OutputConsumerPath outputConsumer = new OutputConsumerPath(output)) {
 			remapper.readClassPath(classpath);
-			remapper.readInputs(input.toPath());
+			remapper.readInputs(input);
 			remapper.apply(outputConsumer);
-			outputConsumer.addNonClassFiles(input.toPath(), NonClassCopyMode.FIX_META_INF, remapper);
+			outputConsumer.addNonClassFiles(input, NonClassCopyMode.FIX_META_INF, remapper);
 		} catch (Exception e) {
-			throw new RuntimeException("Failed to remap JAR " + input + " with mappings from " + mappingsProvider.MAPPINGS_TINY, e);
+			throw new RuntimeException("Failed to remap JAR " + input + " with mappings from " + mappings, e);
 		} finally {
 			remapper.finish();
 		}

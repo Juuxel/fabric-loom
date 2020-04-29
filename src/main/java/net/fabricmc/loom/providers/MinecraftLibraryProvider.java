@@ -25,9 +25,7 @@
 package net.fabricmc.loom.providers;
 
 import java.io.File;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -41,9 +39,8 @@ import net.fabricmc.loom.util.GradleSupport;
 import net.fabricmc.loom.util.MinecraftVersionInfo;
 
 public class MinecraftLibraryProvider extends LogicalDependencyProvider {
-	public File MINECRAFT_LIBS;
-
-	private Collection<File> libs = new HashSet<>();
+	private File MINECRAFT_LIBS;
+	private Set<File> libs = Collections.emptySet();
 
 	@Override
 	public Set<Class<? extends DependencyProvider>> getDependencies() {
@@ -53,12 +50,11 @@ public class MinecraftLibraryProvider extends LogicalDependencyProvider {
 	@Override
 	public void provide(Project project, LoomGradleExtension extension, Consumer<Runnable> postPopulationScheduler) throws Exception {
 		MinecraftProvider minecraftProvider = getProvider(MinecraftProvider.class);
-		MinecraftVersionInfo versionInfo = minecraftProvider.versionInfo;
 
 		initFiles(extension, minecraftProvider);
 		boolean useNatives = !GradleSupport.extractNatives(project);
 
-		for (MinecraftVersionInfo.Library library : versionInfo.libraries) {
+		for (MinecraftVersionInfo.Library library : minecraftProvider.getLibraries()) {
 			if (library.allowed() && (useNatives || !library.isNative()) && library.getFile(MINECRAFT_LIBS) != null) {
 				// TODO: Add custom library locations
 
@@ -69,15 +65,15 @@ public class MinecraftLibraryProvider extends LogicalDependencyProvider {
 					isClientOnly = true;
 				} */
 
-				addDependency(library.getArtifactName(), project, Constants.MINECRAFT_DEPENDENCIES);
+				addDependency(library.getArtifactName(), project, Constants.MINECRAFT_LIBRARIES);
 			}
 		}
 
-		postPopulationScheduler.accept(() -> libs = project.getConfigurations().getByName(Constants.MINECRAFT_DEPENDENCIES).getFiles());
+		libs = project.getConfigurations().getByName(Constants.MINECRAFT_LIBRARIES).getFiles();
 	}
 
-	public Collection<File> getLibraries() {
-		return libs;
+	public Set<File> getLibraries() {
+		return Collections.unmodifiableSet(libs);
 	}
 
 	private void initFiles(LoomGradleExtension extension, MinecraftProvider minecraftProvider) {

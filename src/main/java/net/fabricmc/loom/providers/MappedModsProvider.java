@@ -62,7 +62,7 @@ public class MappedModsProvider extends LogicalDependencyProvider {
 
 		for (RemappedConfigurationEntry entry : Constants.MOD_COMPILE_ENTRIES) {
 			remapDependencies(project, mappingsKey, extension.getRemappedModCache(), configurations.getByName(entry.getSourceConfiguration()),
-					configurations.getByName(entry.getRemappedConfiguration()), configurations.getByName(entry.getTargetConfiguration(configurations)), postPopulationScheduler);
+					configurations.getByName(entry.getRemappedConfiguration()), entry.getTargetConfiguration(configurations), postPopulationScheduler);
 		}
 	}
 

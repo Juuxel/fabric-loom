@@ -62,7 +62,7 @@ public class MinecraftMappedProvider extends LogicalDependencyProvider {
             throw new RuntimeException("mappings file not found");
         }
 
-        if (!minecraftProvider.getMergedJar().exists()) {
+        if (java.nio.file.Files.notExists(minecraftProvider.getMergedJar())) {
             throw new RuntimeException("input merged jar not found");
         }
 
@@ -105,7 +105,7 @@ public class MinecraftMappedProvider extends LogicalDependencyProvider {
             if (getMappedJar().exists()) {
                 getMappedJar().delete();
             }
-            if (getIntermediaryJar().exists() && !minecraftProvider.getMergedJar().equals(getIntermediaryJar())) {
+            if (getIntermediaryJar().exists() && !minecraftProvider.getMergedJar().equals(getIntermediaryJar().toPath())) {
                 getIntermediaryJar().delete();
             }
             if (extension.hasOptiFine()) Openfine.applyBonusMappings(mappingsProvider.MAPPINGS_TINY);

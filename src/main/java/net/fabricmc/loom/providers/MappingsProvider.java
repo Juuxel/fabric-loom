@@ -55,6 +55,7 @@ import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.LoomGradleExtension.JarMergeOrder;
 import net.fabricmc.loom.dependencies.DependencyProvider;
 import net.fabricmc.loom.dependencies.LogicalDependencyProvider;
+import net.fabricmc.loom.providers.MinecraftProvider.MinecraftVersion;
 import net.fabricmc.loom.providers.StackedMappingsProvider.MappingFile;
 import net.fabricmc.loom.providers.StackedMappingsProvider.MappingFile.MappingType;
 import net.fabricmc.loom.providers.mappings.EnigmaReader;
@@ -72,6 +73,7 @@ import net.fabricmc.loom.providers.mappings.TinyReader;
 import net.fabricmc.loom.providers.mappings.TinyV2toV1;
 import net.fabricmc.loom.providers.mappings.TinyWriter;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.MapJarsTiny;
 import net.fabricmc.loom.util.TinyRemapperMappingsHelper;
 import net.fabricmc.mappings.Mappings;
 import net.fabricmc.stitch.commands.CommandProposeFieldNames;
@@ -278,15 +280,17 @@ public class MappingsProvider extends LogicalDependencyProvider {
 						Path contextJar;
 						if (minecraftVersion.equals(mapping.minecraftVersion)) {
 							if (nativeNames) {
-								contextJar = minecraftProvider.getMergedJar().toPath();
+								contextJar = minecraftProvider.getMergedJar();
 							} else {
-								contextJar = SnappyRemapper.remapCurrentJar(project, extension, minecraftProvider, interProvider.map(mappingFile -> mappingFile.origin.toPath()));
+								contextJar = MapJarsTiny.makeInterJar(project, extension, minecraftProvider, interProvider.map(mappingFile -> mappingFile.origin.toPath()));
 							}
 						} else {
+							MinecraftVersion version = MinecraftProvider.makeMergedJar(project, extension, mapping.minecraftVersion, Optional.empty(), JarMergeOrder.INDIFFERENT);
+
 							if (nativeNames) {
-								contextJar = SnappyRemapper.makeMergedJar(project, extension, mapping.minecraftVersion).getRight();
+								contextJar = version.getMergedJar();
 							} else {
-								contextJar = SnappyRemapper.makeInterJar(project, extension, mapping.minecraftVersion, //See if we've actually got the old Intermediaries per chance too
+								contextJar = MapJarsTiny.makeInterJar(project, extension, version, //See if we've actually got the old Intermediaries per chance too
 										searchForIntermediaries(versionToMappings.getOrDefault(mapping.minecraftVersion, Collections.emptyList())).map(mappingFile -> mappingFile.origin.toPath()));
 							}
 						}
@@ -364,7 +368,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 						if (!minecraftVersion.equals(mapping.minecraftVersion)) {
 							renamer = versionToIntermediaries.computeIfAbsent(mapping.minecraftVersion, version -> {
 								Path intermediaryNames = searchForIntermediaries(versionToMappings.getOrDefault(version, Collections.emptyList()))
-										.map(mappingFile -> mappingFile.origin.toPath()).orElseGet(() -> SnappyRemapper.getIntermediaries(extension, version));
+										.map(mappingFile -> mappingFile.origin.toPath()).orElseGet(() -> getIntermediaries(extension, version));
 
 								MappingBlob inters = new MappingBlob();
 								try {
@@ -531,7 +535,7 @@ public class MappingsProvider extends LogicalDependencyProvider {
 			default:
 				throw new IllegalStateException("Unexpected jar merge strategy " + minecraftProvider.getMergeStrategy());
 			}
-			CommandProposeFieldNames.run(minecraftProvider.getMergedJar(), MAPPINGS_TINY_BASE, MAPPINGS_TINY, namespace, "named");
+			CommandProposeFieldNames.run(minecraftProvider.getMergedJar().toFile(), MAPPINGS_TINY_BASE, MAPPINGS_TINY, namespace, "named");
 		}
 
 		if (Files.exists(parameterNames)) {
@@ -634,6 +638,20 @@ public class MappingsProvider extends LogicalDependencyProvider {
 				throw new UncheckedIOException("Error reading mapping file from " + file.origin, e);
 			}
 		}).findFirst();
+	}
+
+	public static Path getIntermediaries(LoomGradleExtension extension, String version) {
+		File intermediaryNames = new File(extension.getUserCache(), "mappings/" + version + '/' + INTERMEDIARY + "-intermediary.tiny");
+
+		if (!intermediaryNames.exists()) {
+			try {
+				FileUtils.copyURLToFile(new URL(SpecialCases.intermediaries(version)), intermediaryNames);
+			} catch (IOException e) {
+				throw new UncheckedIOException("Error downloading Intermediary mappings for " + version, e);
+			}
+		}
+
+		return intermediaryNames.toPath();
 	}
 
 	private String readStackHistory() {

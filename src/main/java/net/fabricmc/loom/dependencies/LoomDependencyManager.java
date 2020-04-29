@@ -116,15 +116,16 @@ public class LoomDependencyManager {
 
 					try {
 						physicalProvider.provide(info, project, extension, afterTasks::add);
-					} catch (Exception e) {
-						throw new RuntimeException("Failed to provide " + dependency.getGroup() + ':' + dependency.getName() + ':' + dependency.getVersion(), e);
+					} catch (Throwable t) {
+						throw new RuntimeException(String.format("%s failed to provide %s:%s:%s for %s", provider.getClass(),
+									dependency.getGroup(), dependency.getName(), dependency.getVersion(), physicalProvider.getTargetConfig()), t);
 					}
 				}
 			} else if (provider instanceof LogicalDependencyProvider) {
 				try {
 					((LogicalDependencyProvider) provider).provide(project, extension, afterTasks::add);
-				} catch (Exception e) {
-					throw new RuntimeException("Failed to provide logical dependency of type " + provider.getClass(), e);
+				} catch (Throwable t) {
+					throw new RuntimeException("Failed to provide logical dependency of type " + provider.getClass(), t);
 				}
 			} else {
 				throw new IllegalStateException("Unexpected dependency provider type for " + provider + ": " + provider.getClass());

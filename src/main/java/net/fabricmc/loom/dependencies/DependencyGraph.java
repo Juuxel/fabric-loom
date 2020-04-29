@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 import net.fabricmc.stitch.util.StitchUtil;
 
 class DependencyGraph {
-	static class DependencyNode {
+	private static class DependencyNode {
 		public final Class<? extends DependencyProvider> type;
 		private DependencyProvider provider;
 		private final Set<DependencyNode> dependencies = StitchUtil.newIdentityHashSet();
@@ -229,7 +229,7 @@ class DependencyGraph {
 				it.remove();
 				currentActive.addAll(node.flagComplete());
 
-				if (currentActive.isEmpty() && !node.getDependents().isEmpty()) {
+				if (currentActive.isEmpty() && !node.getDependents().stream().allMatch(dependent -> awaiting.containsAll(dependent.getDependencies()))) {
 					throw new IllegalStateException("All remaining dependencies have dependencies!");
 				}
 				break;
@@ -240,6 +240,11 @@ class DependencyGraph {
 	/** Whether there are any more {@link DependencyProvider} currently capable of being processed */
 	public synchronized boolean hasAvailable() {
 		return !currentActive.isEmpty();
+	}
+
+	/** Whether there are any {@link DependencyProvider}s waiting to be {@link #markComplete(DependencyProvider) marked complete} */
+	public synchronized boolean hasActive() {
+		return !awaiting.isEmpty();
 	}
 
 	/** {@link Iterable} form of the graph designed to loop over all the {@link DependencyProvider}s in it */
