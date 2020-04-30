@@ -60,7 +60,7 @@ dependencies {
 	implementation ('com.github.Chocohead:tiny-remapper:505526e') {
 		transitive = false
 	}
-	implementation 'cuchaz:enigma:0.15.3+build.168:lib'
+	implementation 'com.github.Juuxel:Enigma:d3787fc'
 
 	// decompilers
 	implementation ('net.fabricmc:procyon-fabric-compilertools:0.5.35.+')
