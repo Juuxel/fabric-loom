@@ -159,7 +159,7 @@ public class MapJarsTiny {
 	public static void remapJar(Logger logger, Path originJar, Path intermediaryMappings, boolean bulldoze, Set<File> libraries, Path remappedJar, String originMappings) {
 		remapJar(logger, originJar,
 				TinyUtils.createTinyMappingProvider(intermediaryMappings, originMappings, "intermediary"),
-				bulldoze, libraries.toArray(new Path[0]), remappedJar, originMappings, "intermediary");
+				bulldoze, libraries.stream().map(File::toPath).toArray(Path[]::new), remappedJar, originMappings, "intermediary");
 	}
 
 	private static void remapJar(Logger logger, Path input, IMappingProvider mappings, boolean bulldozeMappings, Path[] classpath, Path output, String fromM, String toM) {
