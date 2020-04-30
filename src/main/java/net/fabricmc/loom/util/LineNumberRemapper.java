@@ -30,15 +30,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.ZipEntry;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -46,6 +40,10 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+
+import org.zeroturnaround.zip.ZipUtil;
+import org.zeroturnaround.zip.transform.ByteArrayZipEntryTransformer;
+import org.zeroturnaround.zip.transform.ZipEntryTransformerEntry;
 
 import net.fabricmc.loom.util.progress.ProgressLogger;
 
@@ -88,53 +86,32 @@ public class LineNumberRemapper {
 		}
 	}
 
-	public void process(ProgressLogger logger, Path input, Path output) throws IOException {
-		Files.walkFileTree(input, new SimpleFileVisitor<Path>() {
-			@Override
-			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				String rel = input.relativize(file).toString();
-				Path dst = output.resolve(rel);
-				Path parent = dst.getParent();
+	public void process(ProgressLogger logger, File jar) {
+		ZipEntryTransformerEntry[] transformers = lineMap.entrySet().stream().map(entry -> {
+			String className = entry.getKey();
 
-				if (parent != null) {
-					Files.createDirectories(parent);
+			return new ZipEntryTransformerEntry(className + ".class", new ByteArrayZipEntryTransformer() {
+				private final RClass rClass = entry.getValue();
+
+				@Override
+				protected byte[] transform(ZipEntry zipEntry, byte[] input) throws IOException {
+					if (logger != null) logger.progress("Remapping " + className);
+
+					ClassReader reader = new ClassReader(input);
+					ClassWriter writer = new ClassWriter(reader, 0);
+
+					reader.accept(new LineNumberVisitor(Opcodes.ASM7, writer, rClass), 0);
+					return writer.toByteArray();
 				}
 
-				String fName = file.getFileName().toString();
-
-				if (fName.endsWith(".class")) {
-					if (Files.exists(dst)) {
-						Files.delete(dst);
-					}
-
-					String idx = rel.substring(0, rel.length() - 6);
-
-					if (logger != null) {
-						logger.progress("Remapping " + idx);
-					}
-
-					int dollarPos = idx.indexOf('$'); //This makes the assumption that only Java classes are to be remapped.
-
-					if (dollarPos >= 0) {
-						idx = idx.substring(0, dollarPos);
-					}
-
-					if (lineMap.containsKey(idx)) {
-						try (InputStream is = Files.newInputStream(file)) {
-							ClassReader reader = new ClassReader(is);
-							ClassWriter writer = new ClassWriter(0);
-
-							reader.accept(new LineNumberVisitor(Opcodes.ASM7, writer, lineMap.get(idx)), 0);
-							Files.write(dst, writer.toByteArray());
-						}
-					}
-				} else {
-					Files.copy(file, dst, StandardCopyOption.REPLACE_EXISTING);
+				@Override
+				protected boolean preserveTimestamps() {
+					return true; //Why not?
 				}
+			});
+		}).toArray(ZipEntryTransformerEntry[]::new);
 
-				return FileVisitResult.CONTINUE;
-			}
-		});
+		ZipUtil.transformEntries(jar, transformers);
 	}
 
 	private static class LineNumberVisitor extends ClassVisitor {

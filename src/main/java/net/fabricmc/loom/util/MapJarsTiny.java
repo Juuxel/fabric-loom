@@ -60,6 +60,7 @@ import net.fabricmc.mappings.ClassEntry;
 import net.fabricmc.mappings.EntryTriple;
 import net.fabricmc.mappings.Mappings;
 import net.fabricmc.mappings.MethodEntry;
+import net.fabricmc.stitch.commands.CommandFixNesting;
 import net.fabricmc.stitch.util.Pair;
 import net.fabricmc.tinyremapper.IMappingProvider;
 import net.fabricmc.tinyremapper.NonClassCopyMode;
@@ -106,6 +107,7 @@ public class MapJarsTiny {
 		}
 
 		mapJar(project.getLogger(), extension, mappingsProvider, mapProvider.getIntermediaryJar().toPath(), classpath, mapProvider.getMappedJar(), "intermediary", "named");
+		CommandFixNesting.run(mapProvider.getMappedJar());
 	}
 
 	private static void mapJar(Logger logger, LoomGradleExtension extension, MappingsProvider mappingsProvider, Path input, Path[] classpath, File output, String fromM, String toM) throws IOException {
