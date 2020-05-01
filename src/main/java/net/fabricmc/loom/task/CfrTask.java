@@ -73,7 +73,10 @@ public class CfrTask extends AbstractDecompileTask {
             }
 
             CfrDriver driver = new CfrDriver.Builder()
-                    .withOptions(ImmutableMap.of("extraclasspath", extraClasspath.toString()))
+                    .withOptions(ImmutableMap.<String, String>builder()
+                            .put("extraclasspath", extraClasspath.toString())
+                            .put("usenametable", "false")
+                            .build())
                     .withOutputSink(sink)
                     .build();
 
