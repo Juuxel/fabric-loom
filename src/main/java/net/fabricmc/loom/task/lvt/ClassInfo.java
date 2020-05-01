@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -81,6 +82,7 @@ class ClassInfo {
         ClassInfo.cache.put(ClassInfo.JAVA_LANG_OBJECT, ClassInfo.OBJECT);
     }
 
+    public final boolean isObject;
     /**
      * Class name (binary name)
      */
@@ -90,6 +92,11 @@ class ClassInfo {
      * Class superclass name (binary name)
      */
     private final String superName;
+
+    /**
+     * Interfaces
+     */
+    private final Set<String> interfaces;
 
     /**
      * True if this is an interface
@@ -105,9 +112,11 @@ class ClassInfo {
      * Private constructor used to initialise the ClassInfo for {@link Object}
      */
     private ClassInfo() {
+    	isObject = true;
         this.name = ClassInfo.JAVA_LANG_OBJECT;
         this.superName = null;
         this.isInterface = false;
+        this.interfaces = Collections.<String>emptySet();
     }
 
     /**
@@ -116,9 +125,11 @@ class ClassInfo {
      * @param classNode Class node to inspect
      */
     private ClassInfo(ClassNode classNode) {
+    	isObject = false;
     	this.name = classNode.name;
         this.superName = classNode.superName != null ? classNode.superName : ClassInfo.JAVA_LANG_OBJECT;
         this.isInterface = (classNode.access & Opcodes.ACC_INTERFACE) != 0;
+        this.interfaces = new HashSet<>(classNode.interfaces);
     }
 
     /**
@@ -126,6 +137,13 @@ class ClassInfo {
      */
     public boolean isInterface() {
         return this.isInterface;
+    }
+
+    /**
+     * Returns the answer to life, the universe and everything
+     */
+    public Set<String> getInterfaces() {
+        return Collections.<String>unmodifiableSet(this.interfaces);
     }
 
     /**
@@ -155,26 +173,59 @@ class ClassInfo {
      *      anywhere
      */
     public boolean hasSuperClass(ClassInfo superClass) {
+    	return hasSuperClass(superClass, false);
+    }
+
+    /**
+     * Test whether this class has the specified superclass in its hierarchy
+     *
+     * @param superClass Superclass to search for in the hierarchy
+     * @param includeInterfaces True to include interfaces in the lookup
+     * @return true if the specified class appears in the class's hierarchy
+     *      anywhere
+     */
+    public boolean hasSuperClass(ClassInfo superClass, boolean includeInterfaces) {
         if (ClassInfo.OBJECT == superClass) {
             return true;
         }
 
-        return this.findSuperClass(superClass.name, new HashSet<String>()) != null;
+        return this.findSuperClass(superClass.name, includeInterfaces, new HashSet<String>()) != null;
     }
 
-    private ClassInfo findSuperClass(String superClass, Set<String> traversed) {
+    private ClassInfo findSuperClass(String superClass, boolean includeInterfaces, Set<String> traversed) {
         ClassInfo superTarget = this.getSuperClass();
         if (superTarget != null) {
         	if (superClass.equals(superTarget.getName())) {
                 return superTarget;
             }
 
-            ClassInfo found = superTarget.findSuperClass(superClass, traversed);
+            ClassInfo found = superTarget.findSuperClass(superClass, includeInterfaces, traversed);
             if (found != null) {
                 return found;
             }
         }
 
+        if (includeInterfaces) {
+            ClassInfo iface = this.findInterface(superClass);
+            if (iface != null) {
+                return iface;
+            }
+        }
+
+        return null;
+    }
+
+    private ClassInfo findInterface(String superClass) {
+        for (String ifaceName : this.getInterfaces()) {
+            ClassInfo iface = ClassInfo.forName(ifaceName);
+            if (superClass.equals(ifaceName)) {
+                return iface;
+            }
+            ClassInfo superIface = iface.findInterface(superClass);
+            if (superIface != null) {
+                return superIface;
+            }
+        }
         return null;
     }
 
