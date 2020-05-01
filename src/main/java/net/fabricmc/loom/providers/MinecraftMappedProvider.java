@@ -35,6 +35,7 @@ import org.gradle.api.Project;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
 
+import net.fabricmc.loom.AbstractPlugin;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.dependencies.DependencyProvider;
 import net.fabricmc.loom.dependencies.LogicalDependencyProvider;
@@ -118,6 +119,7 @@ public class MinecraftMappedProvider extends LogicalDependencyProvider {
             throw new RuntimeException("mapped jar not found");
         }
 
+        AbstractPlugin.addDirectoryRepo(project, "UserMappedMinecraft", MINECRAFT_MAPPED_JAR.getParentFile());
         addDependency("net.minecraft:minecraft:" + mappedJar, project, Constants.MINECRAFT_NAMED);
         addDependency("net.minecraft:minecraft:" + intermediaryJar, project, Constants.MINECRAFT_INTERMEDIARY);
     }
