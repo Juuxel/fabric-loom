@@ -51,7 +51,9 @@ dependencies {
 		exclude module: 'enigma'
 		exclude module: 'tiny-mappings-parser'
 	}
-	implementation 'com.github.Chocohead:Tiny-Mappings-Parser:d96d407'
+	implementation ('com.github.Chocohead:Tiny-Mappings-Parser:d96d407') {
+		exclude module: 'sponge-mixin'
+	}
 	implementation ('com.github.Chocohead:OptiSine:cc6da75') {//Keep consistent with Openfine.VERSION
 		transitive = false
 	}
@@ -112,6 +114,7 @@ license {
 	exclude '**/loom/util/PentaFunction.java'
 	exclude '**/loom/util/ThrowingIntObjConsumer.java'
 	exclude '**/loom/task/fernflower/JavadocProvider.java'
+	exclude '**/loom/task/lvt/*.java'
 }
 
 wrapper {

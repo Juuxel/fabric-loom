@@ -145,7 +145,7 @@ public class MinecraftProvider extends PhysicalDependencyProvider implements Min
 
 		@Override
 		public boolean needsIntermediaries() {
-			return mergeOrder == JarMergeOrder.LAST && mappings == null;
+			return mergeOrder == JarMergeOrder.LAST && !jarMerger.isDone() && mappings == null;
 		}
 
 		@Override
