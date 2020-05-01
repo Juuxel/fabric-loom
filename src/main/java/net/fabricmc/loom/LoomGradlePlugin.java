@@ -103,9 +103,7 @@ public class LoomGradlePlugin extends AbstractPlugin {
 			task.setLibraries(libraryProvider.getLibraries());
 		});
 
-		TaskProvider<CfrTask> cfrTask = register("cfr", CfrTask.class, t -> {
-			t.getOutputs().upToDateWhen((o) -> false);
-		}, (project, task) -> {
+		register("cfr", CfrTask.class, t -> {}, (project, task) -> {
 			LoomGradleExtension extension = project.getExtensions().getByType(LoomGradleExtension.class);
 			MinecraftLibraryProvider libraryProvider = extension.getMinecraftProvider().getLibraryProvider();
 			MinecraftMappedProvider minecraftProvider = extension.getMinecraftMappedProvider();
@@ -120,9 +118,7 @@ public class LoomGradlePlugin extends AbstractPlugin {
 			task.setLibraries(libraryProvider.getLibraries());
 		});
 
-		TaskProvider<ProcyonTask> procyonTask = register("procyon", ProcyonTask.class, t -> {
-			t.getOutputs().upToDateWhen((o) -> false);
-		}, (project, task) -> {
+		register("procyon", ProcyonTask.class, t -> {}, (project, task) -> {
 			LoomGradleExtension extension = project.getExtensions().getByType(LoomGradleExtension.class);
 			MinecraftLibraryProvider libraryProvider = extension.getMinecraftProvider().getLibraryProvider();
 			MinecraftMappedProvider minecraftProvider = extension.getMinecraftMappedProvider();

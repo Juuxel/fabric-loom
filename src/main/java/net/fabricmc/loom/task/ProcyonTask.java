@@ -45,6 +45,8 @@ import java.util.jar.JarFile;
 public class ProcyonTask extends AbstractDecompileTask {
     @TaskAction
     public void doTask() throws Throwable {
+        Files.deleteIfExists(getOutput().toPath());
+
         try (FileSystem outputFs = DecompilerUtil.getJarFileSystem(getOutput(), true)) {
             JarFile inputJar = new JarFile(getInput());
             List<ITypeLoader> typeLoaders = new ArrayList<>();

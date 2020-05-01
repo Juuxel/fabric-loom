@@ -32,9 +32,7 @@ import org.gradle.api.tasks.TaskAction;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -44,6 +42,8 @@ import java.util.List;
 public class CfrTask extends AbstractDecompileTask {
     @TaskAction
     public void doTask() throws Throwable {
+        Files.deleteIfExists(getOutput().toPath());
+
         try (FileSystem outputFs = DecompilerUtil.getJarFileSystem(getOutput(), true)) {
             OutputSinkFactory sink = new OutputSinkFactory() {
                 @Override
