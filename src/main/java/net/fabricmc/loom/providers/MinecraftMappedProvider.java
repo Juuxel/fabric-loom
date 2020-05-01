@@ -99,7 +99,8 @@ public class MinecraftMappedProvider extends LogicalDependencyProvider {
         String intermediaryJar = minecraftProvider.minecraftVersion + "-intermediary" + atOffset + '-' + mappingsProvider.mappingsName;
         MINECRAFT_INTERMEDIARY_JAR = new File(cache, "minecraft-" + intermediaryJar + ".jar");
         String mappedJar = minecraftProvider.minecraftVersion + "-mapped" + atOffset + '-' + mappingsProvider.mappingsName + '-' + mappingsProvider.mappingsVersion;
-        MINECRAFT_MAPPED_JAR = new File(cache, "minecraft-" + mappedJar + ".jar");
+        MINECRAFT_MAPPED_JAR = new File(cache, mappedJar + File.separator + "minecraft-" + mappedJar + ".jar");
+        Files.createParentDirs(MINECRAFT_MAPPED_JAR);
 
         if (!getMappedJar().exists() || !getIntermediaryJar().exists() || atChange) {
             if (getMappedJar().exists()) {
