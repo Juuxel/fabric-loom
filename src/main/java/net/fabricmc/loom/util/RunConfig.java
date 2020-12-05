@@ -137,7 +137,7 @@ public class RunConfig {
 
 		if (extension.isForge()) {
 			SourceSet main = project.getConvention().getPlugin(JavaPluginConvention.class).getSourceSets().getByName("main");
-			
+
 			String modClasses = Stream.concat(
 					Stream.of(main.getOutput().getResourcesDir().getAbsolutePath()),
 					StreamSupport.stream(main.getOutput().getClassesDirs().spliterator(), false)
