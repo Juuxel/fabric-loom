@@ -53,6 +53,8 @@ import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import net.fabricmc.loom.LoomGradleExtension;
 
 public class RunConfig {
+	private static final String FORGE_MOD_CLASSES_PREFIX = "loom%%";
+
 	public String configName;
 	public String eclipseProjectName;
 	public String ideaModuleName;
@@ -136,14 +138,14 @@ public class RunConfig {
 			StringBuilder modClasses = new StringBuilder();
 			SourceSet main = project.getConvention().getPlugin(JavaPluginConvention.class).getSourceSets().getByName("main");
 
-			for (File classes : main.getOutput().getClassesDirs()) {
-				modClasses.append("loom%%");
-				modClasses.append(classes.getAbsolutePath());
-				modClasses.append(File.pathSeparator);
-			}
-
-			modClasses.append("loom%%");
+			modClasses.append(FORGE_MOD_CLASSES_PREFIX);
 			modClasses.append(main.getOutput().getResourcesDir().getAbsolutePath());
+
+			for (File classes : main.getOutput().getClassesDirs()) {
+				modClasses.append(File.pathSeparator);
+				modClasses.append(FORGE_MOD_CLASSES_PREFIX);
+				modClasses.append(classes.getAbsolutePath());
+			}
 
 			runConfig.envVariables.put("MOD_CLASSES", modClasses.toString());
 		}
