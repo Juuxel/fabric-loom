@@ -143,6 +143,7 @@ public class MappingsProvider extends DependencyProvider {
 		File mappingsJarLocation = getExtension().getUserCache();
 
 		if (mappingProcessorManager.active()) {
+			jarClassifier += "-processed";
 			mappingsJarLocation = mappingsDir.toFile();
 		}
 
