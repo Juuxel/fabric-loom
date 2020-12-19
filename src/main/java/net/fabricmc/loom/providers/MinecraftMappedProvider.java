@@ -146,9 +146,15 @@ public class MinecraftMappedProvider extends DependencyProvider {
 	}
 
 	public void initFiles(MinecraftProvider minecraftProvider, MappingsProvider mappingsProvider) {
+		File cache = getExtension().getUserCache();
+
+		if (getExtension().getMappingProcessorManager().active()) {
+			cache = getExtension().getProjectPersistentCache();
+		}
+
 		this.minecraftProvider = minecraftProvider;
-		minecraftIntermediaryJar = new File(getExtension().getUserCache(), "minecraft-" + getJarVersionString("intermediary") + ".jar");
-		minecraftMappedJar = new File(getJarDirectory(getExtension().getUserCache(), "mapped"), "minecraft-" + getJarVersionString("mapped") + ".jar");
+		minecraftIntermediaryJar = new File(cache, "minecraft-" + getJarVersionString("intermediary") + ".jar");
+		minecraftMappedJar = new File(getJarDirectory(cache, "mapped"), "minecraft-" + getJarVersionString("mapped") + ".jar");
 	}
 
 	protected File getJarDirectory(File parentDirectory, String type) {
