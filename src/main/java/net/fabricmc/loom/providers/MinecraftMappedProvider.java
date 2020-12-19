@@ -50,6 +50,7 @@ public class MinecraftMappedProvider extends DependencyProvider {
 
 	private File minecraftMappedJar;
 	private File minecraftIntermediaryJar;
+	private File cache;
 
 	private MinecraftProvider minecraftProvider;
 
@@ -139,14 +140,14 @@ public class MinecraftMappedProvider extends DependencyProvider {
 	}
 
 	protected void addDependencies(DependencyInfo dependency, Consumer<Runnable> postPopulationScheduler) {
-		getProject().getRepositories().flatDir(repository -> repository.dir(getJarDirectory(getExtension().getUserCache(), "mapped")));
+		getProject().getRepositories().flatDir(repository -> repository.dir(getJarDirectory(cache, "mapped")));
 
 		getProject().getDependencies().add(Constants.Configurations.MINECRAFT_NAMED,
 				getProject().getDependencies().module("net.minecraft:minecraft:" + getJarVersionString("mapped")));
 	}
 
 	public void initFiles(MinecraftProvider minecraftProvider, MappingsProvider mappingsProvider) {
-		File cache = getExtension().getUserCache();
+		cache = getExtension().getUserCache();
 
 		if (getExtension().getMappingProcessorManager().active()) {
 			cache = getExtension().getProjectPersistentCache();
