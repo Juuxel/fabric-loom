@@ -52,6 +52,8 @@ import org.gradle.api.plugins.BasePluginConvention;
 import net.fabricmc.loom.api.decompilers.LoomDecompiler;
 import net.fabricmc.loom.processors.JarProcessor;
 import net.fabricmc.loom.processors.JarProcessorManager;
+import net.fabricmc.loom.processors.MappingProcessor;
+import net.fabricmc.loom.processors.MappingProcessorManager;
 import net.fabricmc.loom.providers.MappingsProvider;
 import net.fabricmc.loom.providers.MinecraftMappedProvider;
 import net.fabricmc.loom.providers.MinecraftProvider;
@@ -73,11 +75,13 @@ public class LoomGradleExtension {
 
 	final List<LoomDecompiler> decompilers = new ArrayList<>();
 	private final List<JarProcessor> jarProcessors = new ArrayList<>();
+	private final List<MappingProcessor> mappingProcessors = new ArrayList<>();
 
 	// Not to be set in the build.gradle
 	private final Project project;
 	private LoomDependencyManager dependencyManager;
 	private JarProcessorManager jarProcessorManager;
+	private MappingProcessorManager mappingProcessorManager;
 	private JsonObject installerJson;
 	private MappingSet[] srcMappingCache = new MappingSet[2];
 	private Mercury[] srcMercuryCache = new Mercury[2];
@@ -372,6 +376,18 @@ public class LoomGradleExtension {
 
 	public List<JarProcessor> getJarProcessors() {
 		return jarProcessors;
+	}
+
+	public MappingProcessorManager getMappingProcessorManager() {
+		return mappingProcessorManager;
+	}
+
+	public void setMappingProcessorManager(MappingProcessorManager mappingProcessorManager) {
+		this.mappingProcessorManager = mappingProcessorManager;
+	}
+
+	public List<MappingProcessor> getMappingProcessors() {
+		return mappingProcessors;
 	}
 
 	public String getRefmapName() {

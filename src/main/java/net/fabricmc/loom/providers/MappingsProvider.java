@@ -47,6 +47,8 @@ import org.zeroturnaround.zip.ZipUtil;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.processors.JarProcessorManager;
+import net.fabricmc.loom.processors.MappingProcessor;
+import net.fabricmc.loom.processors.MappingProcessorManager;
 import net.fabricmc.loom.processors.MinecraftProcessedProvider;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeletingFileVisitor;
@@ -67,8 +69,8 @@ public class MappingsProvider extends DependencyProvider {
 	public String minecraftVersion;
 	public String mappingsVersion;
 
-	private final Path mappingsDir;
-	private final Path mappingsStepsDir;
+	private Path mappingsDir;
+	private Path mappingsStepsDir;
 	private Path intermediaryTiny;
 	private boolean hasRefreshed = false;
 	// The mappings that gradle gives us
@@ -117,6 +119,11 @@ public class MappingsProvider extends DependencyProvider {
 		boolean isV2 = doesJarContainV2Mappings(mappingsJar.toPath());
 		this.mappingsVersion = version + (isV2 ? "-v2" : "");
 
+		LoomGradleExtension extension = getExtension();
+
+		MappingProcessorManager mappingProcessorManager = new MappingProcessorManager(getExtension().getMappingProcessors());
+		extension.setMappingProcessorManager(mappingProcessorManager);
+
 		initFiles();
 
 		if (isRefreshDeps()) {
@@ -133,8 +140,14 @@ public class MappingsProvider extends DependencyProvider {
 			jarClassifier = jarClassifier + depStringSplit[3];
 		}
 
+		File mappingsJarLocation = getExtension().getUserCache();
+
+		if (mappingProcessorManager.active()) {
+			mappingsJarLocation = mappingsDir.toFile();
+		}
+
 		tinyMappings = mappingsDir.resolve(StringUtils.removeSuffix(mappingsJar.getName(), ".jar") + ".tiny").toFile();
-		tinyMappingsJar = new File(getExtension().getUserCache(), mappingsJar.getName().replace(".jar", "-" + jarClassifier + ".jar"));
+		tinyMappingsJar = new File(mappingsJarLocation, mappingsJar.getName().replace(".jar", "-" + jarClassifier + ".jar"));
 
 		if (!tinyMappings.exists() || isRefreshDeps()) {
 			storeMappings(getProject(), minecraftProvider, mappingsJar.toPath());
@@ -145,8 +158,6 @@ public class MappingsProvider extends DependencyProvider {
 		}
 
 		addDependency(tinyMappingsJar, Constants.Configurations.MAPPINGS_FINAL);
-
-		LoomGradleExtension extension = getExtension();
 
 		if (extension.accessWidener != null) {
 			extension.addJarProcessor(new AccessWidenerJarProcessor(getProject()));
@@ -174,7 +185,9 @@ public class MappingsProvider extends DependencyProvider {
 			extractMappings(fileSystem, baseTinyMappings);
 		}
 
-		if (baseMappingsAreV2()) {
+		boolean v2 = baseMappingsAreV2();
+
+		if (v2) {
 			// These are unmerged v2 mappings
 			mergeAndSaveMappings(project, yarnJar);
 		} else {
@@ -185,6 +198,12 @@ public class MappingsProvider extends DependencyProvider {
 
 			project.getLogger().lifecycle(":populating field names");
 			suggestFieldNames(minecraftProvider, baseTinyMappings, tinyMappings.toPath());
+		}
+
+		MappingProcessorManager mappingProcessorManager = getExtension().getMappingProcessorManager();
+
+		if (mappingProcessorManager.active()) {
+			mappingProcessorManager.process(tinyMappings.toPath(), v2 ? MappingProcessor.MappingType.TINY_V2 : MappingProcessor.MappingType.TINY_V1);
 		}
 	}
 
@@ -276,6 +295,11 @@ public class MappingsProvider extends DependencyProvider {
 
 	private void initFiles() {
 		baseTinyMappings = mappingsDir.resolve(mappingsName + "-tiny-" + minecraftVersion + "-" + mappingsVersion + "-base");
+
+		if (getExtension().getMappingProcessorManager().active()) {
+			mappingsDir = getExtension().getProjectPersistentCache().toPath().resolve("mappings");
+			mappingsStepsDir = mappingsDir.resolve("steps");
+		}
 	}
 
 	public void cleanFiles() {
