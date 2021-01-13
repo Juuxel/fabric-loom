@@ -44,6 +44,7 @@ public class McpConfigProvider extends DependencyProvider {
 	private File mcp;
 	private File config;
 	private File srg;
+	private String specialSourceDependency = Constants.Forge.SPECIAL_SOURCE_FALLBACK;
 
 	public McpConfigProvider(Project project) {
 		super(project);
@@ -80,6 +81,10 @@ public class McpConfigProvider extends DependencyProvider {
 
 			try {
 				srgLocation = json.getAsJsonObject("data").getAsJsonPrimitive("mappings").getAsString();
+				specialSourceDependency = json.getAsJsonObject("functions")
+						.getAsJsonObject("rename")
+						.getAsJsonPrimitive("version")
+						.getAsString();
 			} catch (Exception e) {
 				getProject().getLogger().warn(":could not read MCPConfig", e);
 			}
@@ -98,6 +103,10 @@ public class McpConfigProvider extends DependencyProvider {
 
 	public File getSrg() {
 		return srg;
+	}
+
+	public String getSpecialSourceDependency() {
+		return specialSourceDependency;
 	}
 
 	@Override
