@@ -56,19 +56,12 @@ import net.fabricmc.loom.configuration.providers.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.mappings.MappingsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.MojangMappingsDependency;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMappedProvider;
-import net.fabricmc.loom.processors.JarProcessor;
-import net.fabricmc.loom.processors.JarProcessorManager;
-import net.fabricmc.loom.providers.ForgeProvider;
-import net.fabricmc.loom.providers.ForgeUniversalProvider;
-import net.fabricmc.loom.providers.ForgeUserdevProvider;
-import net.fabricmc.loom.providers.MappingsProvider;
-import net.fabricmc.loom.providers.MinecraftMappedProvider;
-import net.fabricmc.loom.providers.MinecraftProvider;
-import net.fabricmc.loom.providers.PatchProvider;
-import net.fabricmc.loom.providers.McpConfigProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.ForgeProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.ForgeUniversalProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.ForgeUserdevProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.McpConfigProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.PatchProvider;
 import net.fabricmc.loom.util.function.LazyBool;
-import net.fabricmc.loom.util.LoomDependencyManager;
-import net.fabricmc.loom.util.mappings.MojangMappingsDependency;
 
 public class LoomGradleExtension {
 	private static final String FORGE_PROPERTY = "loom.forge";

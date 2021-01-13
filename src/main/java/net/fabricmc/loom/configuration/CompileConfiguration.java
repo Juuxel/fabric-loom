@@ -25,42 +25,20 @@
 package net.fabricmc.loom.configuration;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
-import groovy.util.Node;
-import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.ExcludeRule;
-import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
-import org.gradle.api.publish.Publication;
-import org.gradle.api.publish.PublishingExtension;
-import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.javadoc.Javadoc;
-import org.gradle.plugins.ide.idea.model.IdeaModel;
 
-import net.fabricmc.loom.providers.ForgeProvider;
-import net.fabricmc.loom.providers.ForgeUniversalProvider;
-import net.fabricmc.loom.providers.ForgeUserdevProvider;
-import net.fabricmc.loom.providers.LaunchProvider;
-import net.fabricmc.loom.providers.MappingsCache;
-import net.fabricmc.loom.providers.MappingsProvider;
-import net.fabricmc.loom.providers.McpConfigProvider;
-import net.fabricmc.loom.providers.MinecraftProvider;
-import net.fabricmc.loom.providers.PatchProvider;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.build.JarRemapper;
 import net.fabricmc.loom.build.NestedJars;
@@ -71,39 +49,17 @@ import net.fabricmc.loom.configuration.ide.SetupIntelijRunConfigs;
 import net.fabricmc.loom.configuration.providers.LaunchProvider;
 import net.fabricmc.loom.configuration.providers.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.mappings.MappingsProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.ForgeProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.ForgeUniversalProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.ForgeUserdevProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.McpConfigProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.PatchProvider;
 import net.fabricmc.loom.task.AbstractLoomTask;
 import net.fabricmc.loom.task.RemapAllSourcesTask;
 import net.fabricmc.loom.task.RemapJarTask;
 import net.fabricmc.loom.task.RemapSourcesJarTask;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.SourceRemapper;
-import net.fabricmc.loom.util.DownloadUtil;
-import net.fabricmc.loom.util.FabricApiExtension;
-import net.fabricmc.loom.util.GroovyXmlUtil;
-import net.fabricmc.loom.util.JarRemapper;
-import net.fabricmc.loom.util.LoomDependencyManager;
-import net.fabricmc.loom.util.NestedJars;
-import net.fabricmc.loom.util.RemappedConfigurationEntry;
-import net.fabricmc.loom.util.SetupIntelijRunConfigs;
-import net.fabricmc.loom.util.SourceRemapper;
-import net.fabricmc.loom.util.mixin.JavaApInvoker;
-import net.fabricmc.loom.util.mixin.KaptApInvoker;
-import net.fabricmc.loom.util.mixin.ScalaApInvoker;
-
-public class AbstractPlugin implements Plugin<Project> {
-	protected Project project;
-
-	public static boolean isRootProject(Project project) {
-		return project.getRootProject() == project;
-	}
-
-	private void extendsFrom(String a, String b) {
-		project.getConfigurations().getByName(a).extendsFrom(project.getConfigurations().getByName(b));
-	}
-
-	@Override
-	public void apply(Project target) {
-		this.project = target;
 
 /**
  * Add Minecraft dependencies to compile time.
@@ -115,7 +71,7 @@ public final class CompileConfiguration {
 	public static void setupConfigurations(Project project) {
 		// Force add Mojang and Forge repositories
 		addMavenRepo(project, "Mojang", "https://libraries.minecraft.net/");
-		addMavenRepo(target, "Forge", "https://files.minecraftforge.net/maven/");
+		addMavenRepo(project, "Forge", "https://files.minecraftforge.net/maven/");
 
 		Configuration modCompileClasspathConfig = project.getConfigurations().maybeCreate(Constants.Configurations.MOD_COMPILE_CLASSPATH);
 		modCompileClasspathConfig.setTransitive(true);
@@ -145,7 +101,7 @@ public final class CompileConfiguration {
 			Configuration mcpConfig = project.getConfigurations().maybeCreate(Constants.Configurations.MCP_CONFIG);
 			mcpConfig.setTransitive(false);
 
-			extendsFrom(Constants.Configurations.MINECRAFT_DEPENDENCIES, Constants.Configurations.FORGE_DEPENDENCIES);
+			extendsFrom(Constants.Configurations.MINECRAFT_DEPENDENCIES, Constants.Configurations.FORGE_DEPENDENCIES, project);
 		}
 
 		Configuration includeConfig = project.getConfigurations().maybeCreate(Constants.Configurations.INCLUDE);

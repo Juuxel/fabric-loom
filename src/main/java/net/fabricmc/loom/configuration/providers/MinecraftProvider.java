@@ -58,8 +58,8 @@ public class MinecraftProvider extends DependencyProvider {
 	private MinecraftLibraryProvider libraryProvider;
 
 	private File minecraftJson;
-	File minecraftClientJar;
-	File minecraftServerJar;
+	public File minecraftClientJar;
+	public File minecraftServerJar;
 	private File minecraftMergedJar;
 	private File versionManifestJson;
 	private String jarSuffix = "";
@@ -250,7 +250,7 @@ public class MinecraftProvider extends DependencyProvider {
 		return jarSuffix;
 	}
 
-	void setJarSuffix(String jarSuffix) {
+	public void setJarSuffix(String jarSuffix) {
 		this.jarSuffix = jarSuffix;
 	}
 

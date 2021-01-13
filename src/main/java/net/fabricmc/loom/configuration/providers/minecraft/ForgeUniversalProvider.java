@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.providers;
+package net.fabricmc.loom.configuration.providers.minecraft;
 
 import java.io.File;
 import java.util.function.Consumer;
@@ -30,8 +30,8 @@ import java.util.function.Consumer;
 import com.google.common.io.Files;
 import org.gradle.api.Project;
 
+import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.DependencyProvider;
 import net.fabricmc.loom.util.JarUtil;
 
 public class ForgeUniversalProvider extends DependencyProvider {

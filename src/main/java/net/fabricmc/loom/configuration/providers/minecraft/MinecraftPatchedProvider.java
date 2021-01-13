@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.providers;
+package net.fabricmc.loom.configuration.providers.minecraft;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -54,9 +54,10 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
 import org.jetbrains.annotations.Nullable;
 
+import net.fabricmc.loom.configuration.DependencyProvider;
+import net.fabricmc.loom.configuration.providers.MinecraftProvider;
 import net.fabricmc.loom.util.Checksum;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.DependencyProvider;
 import net.fabricmc.loom.util.JarUtil;
 import net.fabricmc.loom.util.TinyRemapperMappingsHelper;
 import net.fabricmc.loom.util.function.FsPathConsumer;
@@ -230,13 +231,6 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 
 	private void remapPatchedJars(Logger logger) throws IOException {
 		boolean[] bools = { true, false };
-		Path[] libraries = getExtension()
-				.getMinecraftProvider()
-				.getLibraryProvider()
-				.getLibraries()
-				.stream()
-				.map(File::toPath)
-				.toArray(Path[]::new);
 
 		for (boolean isClient : bools) {
 			logger.lifecycle(":remapping minecraft (TinyRemapper, " + (isClient ? "client" : "server") + ", srg -> official)");
@@ -253,7 +247,7 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 			try (OutputConsumerPath outputConsumer = new OutputConsumerPath.Builder(output).build()) {
 				outputConsumer.addNonClassFiles(input);
 
-				remapper.readClassPath(libraries);
+				remapper.readClassPath(MinecraftMappedProvider.getRemapClasspath(getProject()));
 				remapper.readInputs(input);
 				remapper.apply(outputConsumer);
 			} finally {

@@ -201,7 +201,11 @@ public class MinecraftMappedProvider extends DependencyProvider {
 	}
 
 	public Path[] getRemapClasspath() {
-		return getProject().getConfigurations().getByName(Constants.Configurations.MINECRAFT_DEPENDENCIES).getFiles()
+		return getRemapClasspath(getProject());
+	}
+
+	public static Path[] getRemapClasspath(Project project) {
+		return project.getConfigurations().getByName(Constants.Configurations.MINECRAFT_DEPENDENCIES).getFiles()
 				.stream().map(File::toPath).toArray(Path[]::new);
 	}
 

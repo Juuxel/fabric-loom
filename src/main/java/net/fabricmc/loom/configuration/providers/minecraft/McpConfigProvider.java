@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.providers;
+package net.fabricmc.loom.configuration.providers.minecraft;
 
 import java.io.File;
 import java.net.URI;
@@ -36,8 +36,8 @@ import java.util.function.Consumer;
 import com.google.common.collect.ImmutableMap;
 import org.gradle.api.Project;
 
+import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.DependencyProvider;
 
 public class McpConfigProvider extends DependencyProvider {
 	private File mcp;

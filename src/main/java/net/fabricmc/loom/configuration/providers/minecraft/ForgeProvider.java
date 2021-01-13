@@ -22,14 +22,14 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.providers;
+package net.fabricmc.loom.configuration.providers.minecraft;
 
 import java.util.function.Consumer;
 
 import org.gradle.api.Project;
 
+import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.DependencyProvider;
 
 public class ForgeProvider extends DependencyProvider {
 	private ForgeVersion version = new ForgeVersion(null);

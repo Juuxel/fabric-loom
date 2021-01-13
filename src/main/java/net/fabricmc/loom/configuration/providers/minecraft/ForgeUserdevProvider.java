@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.providers;
+package net.fabricmc.loom.configuration.providers.minecraft;
 
 import java.io.File;
 import java.io.Reader;
@@ -40,8 +40,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.gradle.api.Project;
 
+import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.DependencyProvider;
 
 public class ForgeUserdevProvider extends DependencyProvider {
 	private File userdevJar;
