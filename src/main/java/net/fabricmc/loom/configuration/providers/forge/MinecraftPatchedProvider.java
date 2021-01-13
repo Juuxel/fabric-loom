@@ -43,6 +43,7 @@ import java.util.function.Predicate;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
+import net.md_5.specialsource.SpecialSource;
 import net.minecraftforge.accesstransformer.TransformerProcessor;
 import net.minecraftforge.binarypatcher.ConsoleTool;
 import org.apache.commons.io.FileUtils;
@@ -57,11 +58,9 @@ import net.fabricmc.loom.configuration.providers.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMappedProvider;
 import net.fabricmc.loom.util.Checksum;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.JarExecutor;
 import net.fabricmc.loom.util.JarUtil;
 import net.fabricmc.loom.util.TinyRemapperMappingsHelper;
 import net.fabricmc.loom.util.function.FsPathConsumer;
-import net.fabricmc.loom.util.gradle.DependencyDownloader;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
 
@@ -165,20 +164,17 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 
 		McpConfigProvider volde = getExtension().getMcpConfigProvider();
 		MinecraftProvider minecraftProvider = getExtension().getMinecraftProvider();
-		Path specialSource = DependencyDownloader.download(getProject(), volde.getSpecialSourceDependency()).getSingleFile().toPath();
 
-		JarExecutor.executeJar(
-				specialSource,
+		SpecialSource.main(new String[] {
 				"--in-jar", minecraftProvider.minecraftClientJar.getAbsolutePath(),
 				"--out-jar", minecraftClientSrgJar.getAbsolutePath(),
 				"--srg-in", volde.getSrg().getAbsolutePath()
-		);
-		JarExecutor.executeJar(
-				specialSource,
+		});
+		SpecialSource.main(new String[] {
 				"--in-jar", minecraftProvider.minecraftServerJar.getAbsolutePath(),
 				"--out-jar", minecraftServerSrgJar.getAbsolutePath(),
 				"--srg-in", volde.getSrg().getAbsolutePath()
-		);
+		});
 	}
 
 	private void injectForgeClasses(Logger logger) throws IOException {

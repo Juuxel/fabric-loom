@@ -123,7 +123,6 @@ public class Constants {
 	}
 
 	public static final class Forge {
-		public static final String SPECIAL_SOURCE_FALLBACK = "net.md-5:SpecialSource:1.8.3:shaded";
 		public static final String SRG_LOCATION_FALLBACK = "config/joined.tsrg";
 
 		private Forge() {
