@@ -22,55 +22,51 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.configuration.providers.minecraft;
+package net.fabricmc.loom.configuration.providers.forge;
 
-import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.io.File;
 import java.util.function.Consumer;
 
-import com.google.common.collect.ImmutableMap;
+import com.google.common.io.Files;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.JarUtil;
 
-public class PatchProvider extends DependencyProvider {
-	public Path clientPatches;
-	public Path serverPatches;
-	public String forgeVersion;
+public class ForgeUniversalProvider extends DependencyProvider {
+	private File forge;
+	private File forgeManifest;
 
-	public PatchProvider(Project project) {
+	public ForgeUniversalProvider(Project project) {
 		super(project);
 	}
 
 	@Override
 	public void provide(DependencyInfo dependency, Consumer<Runnable> postPopulationScheduler) throws Exception {
-		init(dependency.getDependency().getVersion());
+		forge = new File(getExtension().getProjectPersistentCache(), "forge-" + dependency.getDependency().getVersion() + "-universal.jar");
+		forgeManifest = new File(getExtension().getProjectPersistentCache(), "forge-" + dependency.getDependency().getVersion() + "-manifest.mf");
 
-		if (Files.notExists(clientPatches) || Files.notExists(serverPatches) || isRefreshDeps()) {
-			getProject().getLogger().info(":extracting forge patches");
+		if (!forge.exists() || isRefreshDeps()) {
+			File dep = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge"));
+			Files.copy(dep, forge);
+		}
 
-			Path installerJar = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge installer")).toPath();
-
-			try (FileSystem fs = FileSystems.newFileSystem(new URI("jar:" + installerJar.toUri()), ImmutableMap.of("create", false))) {
-				Files.copy(fs.getPath("data", "client.lzma"), clientPatches, StandardCopyOption.REPLACE_EXISTING);
-				Files.copy(fs.getPath("data", "server.lzma"), serverPatches, StandardCopyOption.REPLACE_EXISTING);
-			}
+		if (!forgeManifest.exists() || isRefreshDeps()) {
+			JarUtil.extractFile(forge, "META-INF/MANIFEST.MF", forgeManifest);
 		}
 	}
 
-	private void init(String forgeVersion) {
-		this.forgeVersion = forgeVersion;
-		clientPatches = getExtension().getProjectPersistentCache().toPath().resolve("patches-" + forgeVersion + "-client.lzma");
-		serverPatches = getExtension().getProjectPersistentCache().toPath().resolve("patches-" + forgeVersion + "-server.lzma");
+	public File getForge() {
+		return forge;
+	}
+
+	public File getForgeManifest() {
+		return forgeManifest;
 	}
 
 	@Override
 	public String getTargetConfig() {
-		return Constants.Configurations.FORGE_INSTALLER;
+		return Constants.Configurations.FORGE_UNIVERSAL;
 	}
 }

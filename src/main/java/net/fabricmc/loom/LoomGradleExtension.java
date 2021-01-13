@@ -56,11 +56,11 @@ import net.fabricmc.loom.configuration.providers.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.mappings.MappingsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.MojangMappingsDependency;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMappedProvider;
-import net.fabricmc.loom.configuration.providers.minecraft.ForgeProvider;
-import net.fabricmc.loom.configuration.providers.minecraft.ForgeUniversalProvider;
-import net.fabricmc.loom.configuration.providers.minecraft.ForgeUserdevProvider;
-import net.fabricmc.loom.configuration.providers.minecraft.McpConfigProvider;
-import net.fabricmc.loom.configuration.providers.minecraft.PatchProvider;
+import net.fabricmc.loom.configuration.providers.forge.ForgeProvider;
+import net.fabricmc.loom.configuration.providers.forge.ForgeUniversalProvider;
+import net.fabricmc.loom.configuration.providers.forge.ForgeUserdevProvider;
+import net.fabricmc.loom.configuration.providers.forge.McpConfigProvider;
+import net.fabricmc.loom.configuration.providers.forge.PatchProvider;
 import net.fabricmc.loom.util.function.LazyBool;
 
 public class LoomGradleExtension {
