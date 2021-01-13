@@ -45,6 +45,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import net.minecraftforge.accesstransformer.TransformerProcessor;
 import net.minecraftforge.binarypatcher.ConsoleTool;
+import net.minecraftforge.gradle.mcp.util.MCPRuntime;
+import net.minecraftforge.gradle.mcp.util.MCPWrapper;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
@@ -57,11 +59,9 @@ import net.fabricmc.loom.configuration.providers.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMappedProvider;
 import net.fabricmc.loom.util.Checksum;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.JarExecutor;
 import net.fabricmc.loom.util.JarUtil;
 import net.fabricmc.loom.util.TinyRemapperMappingsHelper;
 import net.fabricmc.loom.util.function.FsPathConsumer;
-import net.fabricmc.loom.util.gradle.DependencyDownloader;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
 
@@ -161,24 +161,27 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 	}
 
 	private void createSrgJars(Logger logger) throws Exception {
-		logger.lifecycle(":remapping minecraft (SpecialSource, official -> srg)");
+		// TODO: FORGE: Get rid of *this*
+		logger.lifecycle(":remapping minecraft (MCP, official -> srg)");
 
 		McpConfigProvider volde = getExtension().getMcpConfigProvider();
-		MinecraftProvider minecraftProvider = getExtension().getMinecraftProvider();
-		Path specialSource = DependencyDownloader.download(getProject(), volde.getSpecialSourceDependency()).getSingleFile().toPath();
+		File root = new File(getExtension().getUserCache(), "mcp_root");
+		root.mkdirs();
+		MCPWrapper wrapper = new MCPWrapper(volde.getMcp(), root);
 
-		JarExecutor.executeJar(
-				specialSource,
-				"--in-jar", minecraftProvider.minecraftClientJar.getAbsolutePath(),
-				"--out-jar", minecraftClientSrgJar.getAbsolutePath(),
-				"--srg-in", volde.getSrg().getAbsolutePath()
-		);
-		JarExecutor.executeJar(
-				specialSource,
-				"--in-jar", minecraftProvider.minecraftServerJar.getAbsolutePath(),
-				"--out-jar", minecraftServerSrgJar.getAbsolutePath(),
-				"--srg-in", volde.getSrg().getAbsolutePath()
-		);
+		// Client
+		{
+			MCPRuntime runtime = wrapper.getRuntime(getProject(), "client");
+			File output = runtime.execute(logger, "rename");
+			Files.copy(output, minecraftClientSrgJar);
+		}
+
+		// Server
+		{
+			MCPRuntime runtime = wrapper.getRuntime(getProject(), "server");
+			File output = runtime.execute(logger, "rename");
+			Files.copy(output, minecraftServerSrgJar);
+		}
 	}
 
 	private void injectForgeClasses(Logger logger) throws IOException {

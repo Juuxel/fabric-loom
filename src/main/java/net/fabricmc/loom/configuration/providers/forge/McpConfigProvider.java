@@ -25,26 +25,23 @@
 package net.fabricmc.loom.configuration.providers.forge;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.Reader;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.function.Consumer;
 
-import com.google.gson.JsonObject;
+import com.google.common.collect.ImmutableMap;
 import org.gradle.api.Project;
 
-import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.JarUtil;
 
 public class McpConfigProvider extends DependencyProvider {
 	private File mcp;
-	private File config;
 	private File srg;
-	private String specialSourceDependency = Constants.Forge.SPECIAL_SOURCE_FALLBACK;
 
 	public McpConfigProvider(Project project) {
 		super(project);
@@ -54,7 +51,7 @@ public class McpConfigProvider extends DependencyProvider {
 	public void provide(DependencyInfo dependency, Consumer<Runnable> postPopulationScheduler) throws Exception {
 		init(dependency.getDependency().getVersion());
 
-		if (mcp.exists() && config.exists() && srg.exists() && !isRefreshDeps()) {
+		if (mcp.exists() && srg.exists() && !isRefreshDeps()) {
 			return; // No work for us to do here
 		}
 
@@ -64,49 +61,24 @@ public class McpConfigProvider extends DependencyProvider {
 			Files.copy(mcpZip, mcp.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		}
 
-		if (!config.exists() || isRefreshDeps()) {
-			JarUtil.extractFile(mcp, "config.json", config);
-		}
-
-		String srgLocation = Constants.Forge.SRG_LOCATION_FALLBACK;
-
-		try (Reader reader = new FileReader(config)) {
-			JsonObject json = LoomGradlePlugin.GSON.fromJson(reader, JsonObject.class);
-
-			if (!json.has("spec")) {
-				throw new RuntimeException("MCPConfig JSON does not have key \"spec\"");
-			} else if (json.getAsJsonPrimitive("spec").getAsInt() != 1) {
-				throw new RuntimeException("MCPConfig JSON has unsupported spec: " + json.getAsJsonPrimitive("spec").getAsInt());
-			}
-
-			try {
-				srgLocation = json.getAsJsonObject("data").getAsJsonPrimitive("mappings").getAsString();
-				specialSourceDependency = json.getAsJsonObject("functions")
-						.getAsJsonObject("rename")
-						.getAsJsonPrimitive("version")
-						.getAsString();
-			} catch (Exception e) {
-				getProject().getLogger().warn(":could not read MCPConfig", e);
-			}
-		}
-
 		if (!srg.exists() || isRefreshDeps()) {
-			JarUtil.extractFile(mcp, srgLocation, srg);
+			try (FileSystem fs = FileSystems.newFileSystem(new URI("jar:" + mcpZip.toUri()), ImmutableMap.of("create", false))) {
+				Files.copy(fs.getPath("config", "joined.tsrg"), srg.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			}
 		}
 	}
 
 	private void init(String version) {
 		mcp = new File(getExtension().getUserCache(), "mcp-" + version + ".zip");
-		config = new File(getExtension().getUserCache(), "mcpconfig-" + version + ".json");
 		srg = new File(getExtension().getUserCache(), "srg-" + version + ".tsrg");
+	}
+
+	public File getMcp() {
+		return mcp;
 	}
 
 	public File getSrg() {
 		return srg;
-	}
-
-	public String getSpecialSourceDependency() {
-		return specialSourceDependency;
 	}
 
 	@Override
