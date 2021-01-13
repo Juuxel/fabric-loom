@@ -176,6 +176,11 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 		PatchProvider patchProvider = getExtension().getPatchProvider();
 		String minecraftVersion = minecraftProvider.getMinecraftVersion();
 		String jarSuffix = "-patched-forge-" + patchProvider.forgeVersion;
+
+		if (getExtension().useFabricMixin) {
+			jarSuffix += "-fabric-mixin";
+		}
+
 		minecraftProvider.setJarSuffix(jarSuffix);
 
 		File globalCache = getExtension().getUserCache();
@@ -303,7 +308,15 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 			File target = environment.patchedSrgJar.apply(this);
 
 			logger.lifecycle(":injecting loom classes into minecraft (" + side + ")");
-			walkFileSystems(injection, target, it -> !it.getFileName().toString().equals("MANIFEST.MF"), this::copyReplacing);
+			walkFileSystems(injection, target, it -> {
+				String fileName = it.getFileName().toString();
+
+				if (fileName.equals("MANIFEST.MF")) {
+					return false;
+				}
+
+				return getExtension().useFabricMixin || !fileName.endsWith("cpw.mods.modlauncher.api.ITransformationService");
+			}, this::copyReplacing);
 		}
 	}
 

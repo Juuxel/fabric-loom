@@ -87,6 +87,11 @@ public class Constants {
 		public static final String TERMINAL_CONSOLE_APPENDER = "net.minecrell:terminalconsoleappender:";
 		public static final String JETBRAINS_ANNOTATIONS = "org.jetbrains:annotations:";
 
+		// Forge
+		public static final String JAVAX_ANNOTATIONS = "com.google.code.findbugs:jsr305:"; // I hate that I have to add these.
+		public static final String SPONGE_MIXIN = "org.spongepowered:mixin:";
+		public static final String FABRIC_MIXIN = "net.fabricmc:sponge-mixin:";
+
 		private Dependencies() {
 		}
 
@@ -98,6 +103,10 @@ public class Constants {
 			public static final String DEV_LAUNCH_INJECTOR = "0.2.1+build.8";
 			public static final String TERMINAL_CONSOLE_APPENDER = "1.2.0";
 			public static final String JETBRAINS_ANNOTATIONS = "19.0.0";
+
+			// Forge
+			public static final String JAVAX_ANNOTATIONS = "3.0.2";
+			public static final String FABRIC_MIXIN = "0.8+build.18";
 
 			private Versions() {
 			}
@@ -124,7 +133,6 @@ public class Constants {
 
 	public static final class Forge {
 		public static final String SRG_LOCATION_FALLBACK = "config/joined.tsrg";
-		public static final String JAVAX_ANNOTATIONS = "com.google.code.findbugs:jsr305:3.0.2"; // I hate that I have to add these.
 
 		private Forge() {
 		}
