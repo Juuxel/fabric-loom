@@ -294,7 +294,7 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 
 	private void mergeJars(Logger logger) throws IOException {
 		// FIXME: Hack here: There are no server-only classes so we can just copy the client JAR.
-		com.google.common.io.Files.copy(minecraftClientPatchedJar, minecraftMergedPatchedJar);
+		FileUtils.copyFile(minecraftClientPatchedJar, minecraftMergedPatchedJar);
 
 		logger.lifecycle(":copying resources");
 
@@ -309,8 +309,8 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 				FileSystem targetFs = FileSystems.newFileSystem(new URI("jar:" + target.toURI()), ImmutableMap.of("create", false))) {
 			for (Path sourceDir : toWalk.apply(sourceFs)) {
 				Path dir = sourceDir.toAbsolutePath();
-				java.nio.file.Files.walk(dir)
-						.filter(java.nio.file.Files::isRegularFile)
+				Files.walk(dir)
+						.filter(Files::isRegularFile)
 						.filter(filter)
 						.forEach(it -> {
 							boolean root = dir.getParent() == null;
@@ -339,14 +339,14 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 
 	private void copyMissingClasses(File source, File target) throws IOException {
 		walkFileSystems(source, target, it -> it.toString().endsWith(".class"), (sourceFs, targetFs, sourcePath, targetPath) -> {
-			if (java.nio.file.Files.exists(targetPath)) return;
+			if (Files.exists(targetPath)) return;
 			Path parent = targetPath.getParent();
 
 			if (parent != null) {
-				java.nio.file.Files.createDirectories(parent);
+				Files.createDirectories(parent);
 			}
 
-			java.nio.file.Files.copy(sourcePath, targetPath);
+			Files.copy(sourcePath, targetPath);
 		});
 	}
 
@@ -358,10 +358,10 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 		Path parent = targetPath.getParent();
 
 		if (parent != null) {
-			java.nio.file.Files.createDirectories(parent);
+			Files.createDirectories(parent);
 		}
 
-		java.nio.file.Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+		Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	private void copyUserdevFiles(File source, File target) throws IOException {
@@ -369,10 +369,10 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 			Path parent = targetPath.getParent();
 
 			if (parent != null) {
-				java.nio.file.Files.createDirectories(parent);
+				Files.createDirectories(parent);
 			}
 
-			java.nio.file.Files.copy(sourcePath, targetPath);
+			Files.copy(sourcePath, targetPath);
 		});
 	}
 
