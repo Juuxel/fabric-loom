@@ -121,4 +121,11 @@ public class Constants {
 		private LaunchWrapper() {
 		}
 	}
+
+	public static final class Forge {
+		public static final String SRG_LOCATION_FALLBACK = "config/joined.tsrg";
+
+		private Forge() {
+		}
+	}
 }

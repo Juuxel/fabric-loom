@@ -25,19 +25,24 @@
 package net.fabricmc.loom.configuration.providers.forge;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.function.Consumer;
 
+import com.google.gson.JsonObject;
 import org.gradle.api.Project;
 
+import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.JarUtil;
 
 public class McpConfigProvider extends DependencyProvider {
 	private File mcp;
+	private File config;
 	private File srg;
 
 	public McpConfigProvider(Project project) {
@@ -48,7 +53,7 @@ public class McpConfigProvider extends DependencyProvider {
 	public void provide(DependencyInfo dependency, Consumer<Runnable> postPopulationScheduler) throws Exception {
 		init(dependency.getDependency().getVersion());
 
-		if (mcp.exists() && srg.exists() && !isRefreshDeps()) {
+		if (mcp.exists() && config.exists() && srg.exists() && !isRefreshDeps()) {
 			return; // No work for us to do here
 		}
 
@@ -58,13 +63,38 @@ public class McpConfigProvider extends DependencyProvider {
 			Files.copy(mcpZip, mcp.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		}
 
+		if (!config.exists() || isRefreshDeps()) {
+			JarUtil.extract(mcp, "config.json", config);
+		}
+
 		if (!srg.exists() || isRefreshDeps()) {
-			JarUtil.extract(mcp, "config/joined.tsrg", srg);
+			String srgLocation = Constants.Forge.SRG_LOCATION_FALLBACK;
+
+			try (Reader reader = new FileReader(config)) {
+				JsonObject json = LoomGradlePlugin.GSON.fromJson(reader, JsonObject.class);
+
+				int spec = json.getAsJsonPrimitive("spec").getAsInt();
+
+				if (spec == 1) {
+					if (json.has("data")) {
+						JsonObject data = json.getAsJsonObject("data");
+
+						if (data.has("mappings")) {
+							srgLocation = data.getAsJsonPrimitive("mappings").getAsString();
+						}
+					}
+				} else {
+					getProject().getLogger().warn(":unsupported MCPConfig spec: " + spec + ", using fallbacks");
+				}
+			}
+
+			JarUtil.extract(mcp, srgLocation, srg);
 		}
 	}
 
 	private void init(String version) {
 		mcp = new File(getExtension().getUserCache(), "mcp-" + version + ".zip");
+		config = new File(getExtension().getUserCache(), "mcpconfig-" + version + ".json");
 		srg = new File(getExtension().getUserCache(), "srg-" + version + ".tsrg");
 	}
 
