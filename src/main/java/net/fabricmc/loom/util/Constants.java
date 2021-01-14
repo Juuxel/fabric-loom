@@ -64,13 +64,15 @@ public class Constants {
 		public static final String MINECRAFT_NAMED = "minecraftNamed";
 		public static final String MAPPINGS = "mappings";
 		public static final String MAPPINGS_FINAL = "mappingsFinal";
+		public static final String LOADER_DEPENDENCIES = "loaderLibraries";
+
+		// Forge
 		public static final String MCP_CONFIG = "mcp";
 		public static final String FORGE = "forge";
 		public static final String FORGE_USERDEV = "forgeUserdev";
 		public static final String FORGE_INSTALLER = "forgeInstaller";
 		public static final String FORGE_UNIVERSAL = "forgeUniversal";
 		public static final String FORGE_DEPENDENCIES = "forgeDependencies";
-		public static final String LOADER_DEPENDENCIES = "loaderLibraries";
 
 		private Configurations() {
 		}
