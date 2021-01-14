@@ -24,12 +24,8 @@
 
 package net.fabricmc.loom.configuration.providers.forge;
 
-import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.function.Consumer;
 
 import com.google.common.collect.ImmutableMap;
@@ -37,6 +33,7 @@ import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.JarUtil;
 
 public class PatchProvider extends DependencyProvider {
 	public Path clientPatches;
@@ -56,10 +53,10 @@ public class PatchProvider extends DependencyProvider {
 
 			Path installerJar = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge installer")).toPath();
 
-			try (FileSystem fs = FileSystems.newFileSystem(new URI("jar:" + installerJar.toUri()), ImmutableMap.of("create", false))) {
-				Files.copy(fs.getPath("data", "client.lzma"), clientPatches, StandardCopyOption.REPLACE_EXISTING);
-				Files.copy(fs.getPath("data", "server.lzma"), serverPatches, StandardCopyOption.REPLACE_EXISTING);
-			}
+			JarUtil.extract(installerJar, ImmutableMap.of(
+					"data/client.lzma", clientPatches,
+					"data/server.lzma", serverPatches
+			));
 		}
 	}
 

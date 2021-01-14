@@ -26,15 +26,11 @@ package net.fabricmc.loom.configuration.providers.forge;
 
 import java.io.File;
 import java.io.Reader;
-import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.function.Consumer;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -42,6 +38,7 @@ import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.JarUtil;
 
 public class ForgeUserdevProvider extends DependencyProvider {
 	private File userdevJar;
@@ -60,12 +57,10 @@ public class ForgeUserdevProvider extends DependencyProvider {
 				.resolve("forge-config-" + dependency.getDependency().getVersion() + ".json");
 
 		if (!userdevJar.exists() || Files.notExists(configJson) || isRefreshDeps()) {
-			File resolved = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge userdev"));
-			Files.copy(resolved.toPath(), userdevJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			Path resolved = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge userdev")).toPath();
+			Files.copy(resolved, userdevJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-			try (FileSystem fs = FileSystems.newFileSystem(new URI("jar:" + resolved.toURI()), ImmutableMap.of("create", false))) {
-				Files.copy(fs.getPath("config.json"), configJson, StandardCopyOption.REPLACE_EXISTING);
-			}
+			JarUtil.extract(resolved, "config.json", configJson);
 		}
 
 		JsonObject json;

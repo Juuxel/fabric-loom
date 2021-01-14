@@ -25,19 +25,16 @@
 package net.fabricmc.loom.configuration.providers.forge;
 
 import java.io.File;
-import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.function.Consumer;
 
-import com.google.common.collect.ImmutableMap;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.JarUtil;
 
 public class McpConfigProvider extends DependencyProvider {
 	private File mcp;
@@ -62,9 +59,7 @@ public class McpConfigProvider extends DependencyProvider {
 		}
 
 		if (!srg.exists() || isRefreshDeps()) {
-			try (FileSystem fs = FileSystems.newFileSystem(new URI("jar:" + mcpZip.toUri()), ImmutableMap.of("create", false))) {
-				Files.copy(fs.getPath("config", "joined.tsrg"), srg.toPath(), StandardCopyOption.REPLACE_EXISTING);
-			}
+			JarUtil.extract(mcp, "config/joined.tsrg", srg);
 		}
 	}
 

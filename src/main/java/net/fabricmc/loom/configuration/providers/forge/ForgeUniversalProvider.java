@@ -53,7 +53,7 @@ public class ForgeUniversalProvider extends DependencyProvider {
 		}
 
 		if (!forgeManifest.exists() || isRefreshDeps()) {
-			JarUtil.extractFile(forge, "META-INF/MANIFEST.MF", forgeManifest);
+			JarUtil.extract(forge, "META-INF/MANIFEST.MF", forgeManifest);
 		}
 	}
 

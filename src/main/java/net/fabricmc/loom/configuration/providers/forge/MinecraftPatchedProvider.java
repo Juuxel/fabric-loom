@@ -228,7 +228,7 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 			File atJar = File.createTempFile("at" + side, ".jar");
 			File at = File.createTempFile("at" + side, ".cfg");
 			FileUtils.copyFile(target, atJar);
-			JarUtil.extractFile(atJar, "META-INF/accesstransformer.cfg", at);
+			JarUtil.extract(atJar, "META-INF/accesstransformer.cfg", at);
 			String[] args = new String[] {
 					"--inJar", atJar.getAbsolutePath(),
 					"--outJar", target.getAbsolutePath(),

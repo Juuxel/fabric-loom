@@ -31,6 +31,8 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -40,11 +42,20 @@ import com.google.common.collect.ImmutableMap;
  * @author Juuz
  */
 public final class JarUtil {
-	public static void extractFile(File jar, String filePath, File target) throws IOException {
-		try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + jar.toURI()), ImmutableMap.of("create", false))) {
-			Path targetPath = target.toPath();
-			Files.deleteIfExists(targetPath);
-			Files.copy(fs.getPath(filePath), targetPath);
+	public static void extract(File jar, String filePath, File target) throws IOException {
+		extract(jar.toPath(), ImmutableMap.of(filePath, target.toPath()));
+	}
+
+	public static void extract(Path jar, String filePath, Path target) throws IOException {
+		extract(jar, ImmutableMap.of(filePath, target));
+	}
+
+	public static void extract(Path jar, Map<String, Path> paths) throws IOException {
+		try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + jar.toUri()), ImmutableMap.of("create", false))) {
+			for (Map.Entry<String, Path> entry : paths.entrySet()) {
+				Path from = fs.getPath(entry.getKey().replace("/", fs.getSeparator()));
+				Files.copy(from, entry.getValue(), StandardCopyOption.REPLACE_EXISTING);
+			}
 		}
 	}
 }
