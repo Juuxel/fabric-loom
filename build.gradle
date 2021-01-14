@@ -138,7 +138,6 @@ apply from: 'https://github.com/FabricMC/fabric-docs/raw/master/gradle/license.g
 
 license {
 	exclude '**/loom/util/DownloadUtil.java'
-	exclude '**/loom/util/srg/SpecialSourceExecutor.java'
 }
 
 checkstyle {
