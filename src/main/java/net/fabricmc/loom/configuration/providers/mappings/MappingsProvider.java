@@ -383,7 +383,7 @@ public class MappingsProvider extends DependencyProvider {
 		return intermediaryTiny;
 	}
 
-	public String getMappingsKey() {
-		return mappingsName + "." + minecraftVersion.replace(' ', '_').replace('.', '_').replace('-', '_') + "." + mappingsVersion;
+	public String getMappingsKey(String platformSuffix) {
+		return mappingsName + "." + minecraftVersion.replace(' ', '_').replace('.', '_').replace('-', '_') + platformSuffix + "." + mappingsVersion;
 	}
 }
