@@ -33,8 +33,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import javax.annotation.Nonnull;
-
 import cpw.mods.modlauncher.api.IEnvironment;
 import cpw.mods.modlauncher.api.ITransformationService;
 import cpw.mods.modlauncher.api.ITransformer;
@@ -49,7 +47,6 @@ import net.fabricmc.mapping.tree.TinyTree;
 public class ForgeLoomMixinRemapperInjectorService implements ITransformationService {
 	private static final Logger LOGGER = LogManager.getLogger("ForgeLoomRemapperInjector");
 
-	@Nonnull
 	@Override
 	public String name() {
 		return "ForgeLoomMixinRemapperInjector";
@@ -75,7 +72,6 @@ public class ForgeLoomMixinRemapperInjectorService implements ITransformationSer
 	public void onLoad(IEnvironment env, Set<String> otherServices) throws IncompatibleEnvironmentException {
 	}
 
-	@Nonnull
 	@Override
 	public List<ITransformer> transformers() {
 		return Collections.emptyList();
