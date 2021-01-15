@@ -27,14 +27,14 @@ package net.fabricmc.loom.util.srg;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
+import java.util.jar.JarOutputStream;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
 
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
@@ -43,7 +43,6 @@ import org.gradle.util.GradleVersion;
 import org.zeroturnaround.zip.ZipUtil;
 
 import net.fabricmc.loom.LoomGradleExtension;
-import net.fabricmc.loom.util.JarUtil;
 
 public class SpecialSourceExecutor {
 	public static Path produceSrgJar(Project project, File specialSourceJar, Path officialJar, Path srgPath) throws Exception {
@@ -51,19 +50,15 @@ public class SpecialSourceExecutor {
 				.filter(s -> !s.startsWith("\t"))
 				.map(s -> s.split(" ")[0] + ".class")
 				.collect(Collectors.toSet());
-		Path stripped = project.getExtensions().getByType(LoomGradleExtension.class).getProjectBuildCache().toPath().resolve(officialJar.getFileName().toString().substring(0, officialJar.getFileName().toString().length() - 3) + "-filtered.jar");
+		Path stripped = project.getExtensions().getByType(LoomGradleExtension.class).getProjectBuildCache().toPath().resolve(officialJar.getFileName().toString().substring(0, officialJar.getFileName().toString().length() - 4) + "-filtered.jar");
 		Files.deleteIfExists(stripped);
 
-		try (FileSystem strippedFs = JarUtil.fs(stripped, true)) {
+		try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(stripped))) {
 			ZipUtil.iterate(officialJar.toFile(), (in, zipEntry) -> {
 				if (filter.contains(zipEntry.getName())) {
-					Path path = strippedFs.getPath(zipEntry.getName());
-
-					if (path.getParent() != null) {
-						Files.createDirectories(path.getParent());
-					}
-
-					Files.write(path, IOUtils.toByteArray(in), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+					output.putNextEntry((ZipEntry) zipEntry.clone());
+					IOUtils.write(IOUtils.toByteArray(in), output);
+					output.closeEntry();
 				}
 			});
 		}
