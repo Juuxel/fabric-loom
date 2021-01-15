@@ -25,6 +25,8 @@
 package net.fabricmc.loom.configuration;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.google.common.collect.ImmutableMap;
 import org.gradle.api.Project;
@@ -229,9 +231,17 @@ public final class CompileConfiguration {
 				if (extension.isForge()) {
 					remapJarTask.getToM().set("srg");
 					((Jar) jarTask).manifest(manifest -> {
+						List<String> mixinConfigs = new ArrayList<>();
+
 						if (extension.mixinConfig != null) {
-							manifest.attributes(ImmutableMap.of("MixinConfigs", extension.mixinConfig));
+							mixinConfigs.add(extension.mixinConfig);
 						}
+
+						if (extension.mixinConfigs != null) {
+							mixinConfigs.addAll(extension.mixinConfigs);
+						}
+
+						manifest.attributes(ImmutableMap.of("MixinConfigs", String.join(",", mixinConfigs)));
 					});
 				}
 

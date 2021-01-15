@@ -75,7 +75,9 @@ public class LoomGradleExtension {
 	public File accessWidener = null;
 	public Function<String, Object> intermediaryUrl = mcVer -> "https://maven.fabricmc.net/net/fabricmc/intermediary/" + mcVer + "/intermediary-" + mcVer + "-v2.jar";
 	public boolean shareCaches = false;
+	// TODO: FORGE: Remove this dual mixinConfig system
 	public String mixinConfig = null; // FORGE: Passed to Minecraft
+	public List<String> mixinConfigs = null; // FORGE: Passed to Minecraft
 
 	private final ConfigurableFileCollection unmappedMods;
 
