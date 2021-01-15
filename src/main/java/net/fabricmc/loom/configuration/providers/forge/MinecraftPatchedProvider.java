@@ -95,6 +95,10 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 	public void provide(DependencyInfo dependency, Consumer<Runnable> postPopulationScheduler) throws Exception {
 		initFiles();
 
+		if (atDirty) {
+			getProject().getLogger().lifecycle(":found dirty access transformers");
+		}
+
 		if (atDirty || !minecraftClientPatchedJar.exists() || !minecraftServerPatchedJar.exists()) {
 			if (!minecraftClientSrgJar.exists() || !minecraftServerSrgJar.exists()) {
 				createSrgJars(getProject().getLogger());
