@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.function.UnaryOperator;
 import java.util.zip.ZipEntry;
 
-import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.logging.Logger;
 import org.zeroturnaround.zip.ZipUtil;
 import org.zeroturnaround.zip.transform.StringZipEntryTransformer;
@@ -57,7 +56,7 @@ public final class AtRemapper {
 				for (int i = 0; i < lines.length; i++) {
 					String line = lines[i].trim();
 
-					if (line.startsWith("#") || StringUtils.isBlank(line)) {
+					if (line.startsWith("#") || line.isEmpty() || line.chars().allMatch(Character::isWhitespace)) {
 						output.add(i, line);
 						continue;
 					}
