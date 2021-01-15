@@ -156,7 +156,7 @@ checkstyleMain {
 gradlePlugin {
 	plugins {
 		fabricLoom {
-			id = 'fabric-loom'
+			id = 'io.github.juuxel.fabric-loom'
 			implementationClass = 'net.fabricmc.loom.LoomGradlePlugin'
 		}
 	}
@@ -193,8 +193,8 @@ publishing {
 
 		// Manually crate the plugin marker for snapshot versions
 		snapshotPlugin(MavenPublication) { publication ->
-			groupId 'fabric-loom'
-			artifactId 'fabric-loom.gradle.plugin'
+			groupId 'io.github.juuxel.fabric-loom'
+			artifactId 'io.github.juuxel.fabric-loom.gradle.plugin'
 			version baseVersion + '-SNAPSHOT'
 
 			pom.withXml({

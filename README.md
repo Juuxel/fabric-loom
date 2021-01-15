@@ -26,24 +26,17 @@ pluginManagement {
 +			url = 'https://files.minecraftforge.net/maven'
 +		}
 +		maven {
-+			name = 'Jitpack'
-+			url = 'https://jitpack.io'
++			name = 'JuuxelBintray'
++			url = 'https://dl.bintray.com/juuxel/maven'
 +		}
 	}
-+	resolutionStrategy {
-+		eachPlugin {
-+			if (requested.id.id == "fabric-loom" && requested.version?.endsWith("-SNAPSHOT") != true) {
-+				useModule("com.github.Juuxel.fabric-loom:fabric-loom:${requested.version}")
-+			}
-+		}
-+	}
 }
 ```
 `build.gradle`:
 ```diff
 plugins {
 -	id 'fabric-loom' version '0.5-SNAPSHOT'
-+	id 'fabric-loom' version '<commit hash here>'
++	id 'io.github.juuxel.fabric-loom' version '0.6.2'
 }
 ```
 
