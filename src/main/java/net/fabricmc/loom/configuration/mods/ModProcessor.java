@@ -142,7 +142,7 @@ public class ModProcessor {
 		MinecraftMappedProvider mappedProvider = extension.getMinecraftMappedProvider();
 		MappingsProvider mappingsProvider = extension.getMappingsProvider();
 
-		Path mc = mappedProvider.getIntermediaryJar().toPath();
+		Path mc = extension.isForge() ? mappedProvider.getSrgJar().toPath() : mappedProvider.getIntermediaryJar().toPath();
 		Path[] mcDeps = project.getConfigurations().getByName(Constants.Configurations.LOADER_DEPENDENCIES).getFiles()
 							.stream().map(File::toPath).toArray(Path[]::new);
 

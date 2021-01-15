@@ -25,16 +25,17 @@
 package net.fabricmc.loom.util.srg;
 
 import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipEntry;
 
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.logging.Logger;
+import org.zeroturnaround.zip.ZipUtil;
+import org.zeroturnaround.zip.transform.StringZipEntryTransformer;
+import org.zeroturnaround.zip.transform.ZipEntryTransformerEntry;
 
-import net.fabricmc.loom.util.JarUtil;
 import net.fabricmc.loom.util.function.CollectionUtil;
 import net.fabricmc.mapping.tree.TinyTree;
 
@@ -45,15 +46,14 @@ import net.fabricmc.mapping.tree.TinyTree;
  */
 public final class AtRemapper {
 	public static void remap(Logger logger, Path jar, TinyTree mappings, String targetNamespace) throws IOException {
-		try (FileSystem fs = JarUtil.fs(jar, false)) {
-			Path atPath = fs.getPath("META-INF", "accesstransformer.cfg");
+		ZipUtil.transformEntries(jar.toFile(), new ZipEntryTransformerEntry[]{(new ZipEntryTransformerEntry("META-INF/accesstransformer.cfg", new StringZipEntryTransformer() {
+			@Override
+			protected String transform(ZipEntry zipEntry, String input) {
+				String[] lines = input.split("\n");
+				List<String> output = new ArrayList<>(lines.length);
 
-			if (Files.exists(atPath)) {
-				List<String> lines = Files.readAllLines(atPath);
-				List<String> output = new ArrayList<>(lines.size());
-
-				for (int i = 0; i < lines.size(); i++) {
-					String line = lines.get(i).trim();
+				for (int i = 0; i < lines.length; i++) {
+					String line = lines[i].trim();
 
 					if (line.startsWith("#") || StringUtils.isBlank(line)) {
 						output.add(i, line);
@@ -77,10 +77,8 @@ public final class AtRemapper {
 					output.add(i, String.join(" ", parts));
 				}
 
-				if (!lines.equals(output)) {
-					JarUtil.write(atPath, output);
-				}
+				return String.join("\n", output);
 			}
-		}
+		}))});
 	}
 }

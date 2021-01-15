@@ -64,6 +64,7 @@ public class MinecraftMappedProvider extends DependencyProvider {
 	private File inputJar;
 	private File minecraftMappedJar;
 	private File minecraftIntermediaryJar;
+	private File minecraftSrgJar;
 
 	private MinecraftProvider minecraftProvider;
 
@@ -83,7 +84,7 @@ public class MinecraftMappedProvider extends DependencyProvider {
 
 		boolean isForgeAtDirty = getExtension().isForge() && getExtension().getMappingsProvider().patchedProvider.isAtDirty();
 
-		if (!minecraftMappedJar.exists() || !getIntermediaryJar().exists() || isRefreshDeps() || isForgeAtDirty) {
+		if (!minecraftMappedJar.exists() || !getIntermediaryJar().exists() || (getExtension().isForge() && !getSrgJar().exists()) || isRefreshDeps() || isForgeAtDirty) {
 			if (minecraftMappedJar.exists()) {
 				minecraftMappedJar.delete();
 			}
@@ -94,12 +95,21 @@ public class MinecraftMappedProvider extends DependencyProvider {
 				minecraftIntermediaryJar.delete();
 			}
 
+			if (getExtension().isForge() && minecraftSrgJar.exists()) {
+				minecraftSrgJar.delete();
+			}
+
 			try {
 				mapMinecraftJar();
 			} catch (Throwable t) {
 				// Cleanup some some things that may be in a bad state now
 				minecraftMappedJar.delete();
 				minecraftIntermediaryJar.delete();
+
+				if (getExtension().isForge()) {
+					minecraftSrgJar.delete();
+				}
+
 				getExtension().getMappingsProvider().cleanFiles();
 				throw new RuntimeException("Failed to remap minecraft", t);
 			}
@@ -120,9 +130,10 @@ public class MinecraftMappedProvider extends DependencyProvider {
 		Path input = inputJar.toPath();
 		Path outputMapped = minecraftMappedJar.toPath();
 		Path outputIntermediary = minecraftIntermediaryJar.toPath();
+		Path outputSrg = minecraftSrgJar == null ? null : minecraftSrgJar.toPath();
 
-		for (String toM : Arrays.asList("named", "intermediary")) {
-			Path output = "named".equals(toM) ? outputMapped : outputIntermediary;
+		for (String toM : (getExtension().isForge() ? Arrays.asList("named", "intermediary", "srg") : Arrays.asList("named", "intermediary"))) {
+			Path output = "named".equals(toM) ? outputMapped : "srg".equals(toM) ? outputSrg : outputIntermediary;
 
 			getProject().getLogger().lifecycle(":remapping minecraft (TinyRemapper, " + fromM + " -> " + toM + ")");
 
@@ -144,7 +155,7 @@ public class MinecraftMappedProvider extends DependencyProvider {
 				remapper.finish();
 			}
 
-			if (getExtension().isForge()) {
+			if (getExtension().isForge() && !"srg".equals(toM)) {
 				getProject().getLogger().lifecycle(":running forge finalising tasks");
 
 				// TODO: Relocate this to its own class
@@ -183,7 +194,7 @@ public class MinecraftMappedProvider extends DependencyProvider {
 
 	public TinyRemapper getTinyRemapper(String fromM, String toM) throws IOException {
 		TinyRemapper.Builder builder = TinyRemapper.newRemapper()
-				.withMappings(TinyRemapperMappingsHelper.create(getExtension().getMappingsProvider().getMappings(), fromM, toM, true))
+				.withMappings(TinyRemapperMappingsHelper.create(getExtension().isForge() ? getExtension().getMappingsProvider().getMappingsWithSrg() : getExtension().getMappingsProvider().getMappings(), fromM, toM, true))
 				.renameInvalidLocals(true)
 				.rebuildSourceFilenames(true);
 
@@ -218,6 +229,7 @@ public class MinecraftMappedProvider extends DependencyProvider {
 	public void initFiles(MinecraftProvider minecraftProvider, MappingsProvider mappingsProvider) {
 		this.minecraftProvider = minecraftProvider;
 		minecraftIntermediaryJar = new File(getExtension().getUserCache(), "minecraft-" + getJarVersionString("intermediary") + ".jar");
+		minecraftSrgJar = !getExtension().isForge() ? null : new File(getExtension().getUserCache(), "minecraft-" + getJarVersionString("srg") + ".jar");
 		minecraftMappedJar = new File(getJarDirectory(getExtension().getUserCache(), "mapped"), "minecraft-" + getJarVersionString("mapped") + ".jar");
 		inputJar = getExtension().isForge() ? mappingsProvider.patchedProvider.getMergedJar() : minecraftProvider.getMergedJar();
 	}
@@ -236,6 +248,10 @@ public class MinecraftMappedProvider extends DependencyProvider {
 
 	public File getMappedJar() {
 		return minecraftMappedJar;
+	}
+
+	public File getSrgJar() {
+		return minecraftSrgJar;
 	}
 
 	@Override
