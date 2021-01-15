@@ -36,8 +36,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 
@@ -60,10 +62,10 @@ import net.fabricmc.loom.configuration.processors.dependency.ModDependencyInfo;
 import net.fabricmc.loom.configuration.providers.mappings.MappingsProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMappedProvider;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.TinyRemapperMappingsHelper;
 import net.fabricmc.loom.util.srg.AtRemapper;
 import net.fabricmc.loom.util.srg.CoreModClassRemapper;
 import net.fabricmc.mapping.tree.TinyTree;
-import net.fabricmc.loom.util.TinyRemapperMappingsHelper;
 import net.fabricmc.tinyremapper.InputTag;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
@@ -209,6 +211,26 @@ public class ModProcessor {
 			if (extension.isForge()) {
 				AtRemapper.remap(project.getLogger(), info.getRemappedOutput().toPath(), mappings, toM);
 				CoreModClassRemapper.remapJar(info.getRemappedOutput().toPath(), mappings, project.getLogger(), toM);
+
+				if (ZipUtil.containsEntry(info.getRemappedOutput(), "META-INF/MANIFEST.MF")) {
+					ZipUtil.transformEntry(info.getRemappedOutput(), "META-INF/MANIFEST.MF", (in, zipEntry, out) -> {
+						Manifest manifest = new Manifest(in);
+						manifest.getEntries().clear();
+						out.putNextEntry(new ZipEntry(zipEntry.getName()));
+						manifest.write(out);
+						out.closeEntry();
+					});
+				}
+
+				List<String> filesToRemove = new ArrayList<>();
+				ZipUtil.iterate(info.getRemappedOutput(), (in, zipEntry) -> {
+					if (zipEntry.getName().toLowerCase(Locale.ROOT).endsWith(".rsa") || zipEntry.getName().toLowerCase(Locale.ROOT).endsWith(".sf")) {
+						if (zipEntry.getName().startsWith("META-INF")) {
+							filesToRemove.add(zipEntry.getName());
+						}
+					}
+				});
+				ZipUtil.removeEntries(info.getRemappedOutput(), filesToRemove.toArray(new String[0]));
 			}
 
 			info.finaliseRemapping();
