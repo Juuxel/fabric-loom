@@ -242,5 +242,5 @@ bintray {
 	}
 
 	Map<String, ?> publicationMap = publishing.publications.getAsMap()
-	publications = publicationMap.keySet().toArray(new String[0])
+	publications = publicationMap.keySet().findAll { !it.contains("snapshot") }.toArray(new String[0])
 }
