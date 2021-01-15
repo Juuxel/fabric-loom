@@ -7,12 +7,13 @@ plugins {
 	id 'groovy'
 	id 'checkstyle'
 	id 'com.github.johnrengelman.shadow' version '4.0.4'
+	id 'com.jfrog.bintray' version '1.8.5'
 }
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-group = 'net.fabricmc'
+group = 'io.github.juuxel'
 archivesBaseName = project.name
 def baseVersion = '0.6'
 
@@ -21,6 +22,9 @@ def ENV = System.getenv()
 if (ENV.BUILD_NUMBER) {
 	build = "release #${ENV.BUILD_NUMBER}"
 	version = baseVersion + '.' + ENV.BUILD_NUMBER
+} else if (ENV.GITHUB_REF) {
+	def ref = ENV.GITHUB_REF
+	version = ref.substring(ref.lastIndexOf('/') + 1)
 } else {
 	version = baseVersion + '-SNAPSHOT'
 }
@@ -219,4 +223,24 @@ publishing {
 			}
 		}
 	}
+}
+
+bintray {
+	user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : ENV.BINTRAY_USER
+	key = project.hasProperty('bintrayKey') ? project.property('bintrayKey') : ENV.BINTRAY_KEY
+
+	pkg {
+		userOrg = "juuxel"
+		repo = "maven"
+		name = "forgified-loom"
+		licenses = ["MIT"]
+		vcsUrl = "https://github.com/Juuxel/fabric-loom"
+
+		version {
+			name = project.version
+		}
+	}
+
+	Map<String, ?> publicationMap = publishing.publications.getAsMap()
+	publications = publicationMap.keySet().toArray(new String[0])
 }
