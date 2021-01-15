@@ -121,9 +121,7 @@ public class LoomGradleExtension {
 	}
 
 	public void addTaskBeforeRun(String task) {
-		synchronized(this.tasksBeforeRun) {
-			this.tasksBeforeRun.add(task);
-		}
+		this.tasksBeforeRun.add(task);
 	}
 
 	public List<String> getTasksBeforeRun() {
