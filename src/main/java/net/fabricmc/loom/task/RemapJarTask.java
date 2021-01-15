@@ -27,12 +27,19 @@ package net.fabricmc.loom.task;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.file.FileCollection;
@@ -50,6 +57,7 @@ import net.fabricmc.loom.build.MixinRefmapHelper;
 import net.fabricmc.loom.build.NestedJars;
 import net.fabricmc.loom.configuration.accesswidener.AccessWidenerJarProcessor;
 import net.fabricmc.loom.configuration.providers.mappings.MappingsProvider;
+import net.fabricmc.loom.util.JarUtil;
 import net.fabricmc.loom.util.TinyRemapperMappingsHelper;
 import net.fabricmc.loom.util.ZipReprocessorUtil;
 import net.fabricmc.loom.util.gradle.GradleSupport;
@@ -158,6 +166,30 @@ public class RemapJarTask extends Jar {
 			project.getLogger().debug("Transformed mixin reference maps in output JAR!");
 		}
 
+		if (extension.isForge()) {
+			try (FileSystem fs = JarUtil.fs(output, false)) {
+				Path refmapPath = fs.getPath(extension.getRefmapName());
+
+				if (Files.exists(refmapPath)) {
+					try (Reader refmapReader = Files.newBufferedReader(refmapPath, StandardCharsets.UTF_8)) {
+						JsonObject refmapElement = new JsonParser().parse(refmapReader).getAsJsonObject().deepCopy();
+						Files.delete(refmapPath);
+
+						if (refmapElement.has("data")) {
+							JsonObject data = refmapElement.get("data").getAsJsonObject();
+
+							if (data.has("named:intermediary")) {
+								data.add("searge", data.get("named:intermediary").deepCopy());
+								data.remove("named:intermediary");
+							}
+						}
+
+						Files.write(refmapPath, new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create().toJson(refmapElement).getBytes(StandardCharsets.UTF_8));
+					}
+				}
+			}
+		}
+
 		if (getAddNestedDependencies().getOrElse(false)) {
 			if (NestedJars.addNestedJars(project, output)) {
 				project.getLogger().debug("Added nested jar paths to mod json");
@@ -226,6 +258,32 @@ public class RemapJarTask extends Jar {
 
 					if (MixinRefmapHelper.addRefmapName(extension.getRefmapName(), extension.getMixinJsonVersion(), output)) {
 						project.getLogger().debug("Transformed mixin reference maps in output JAR!");
+					}
+
+					if (extension.isForge()) {
+						try (FileSystem fs = JarUtil.fs(output, false)) {
+							Path refmapPath = fs.getPath(extension.getRefmapName());
+
+							if (Files.exists(refmapPath)) {
+								try (Reader refmapReader = Files.newBufferedReader(refmapPath, StandardCharsets.UTF_8)) {
+									JsonObject refmapElement = new JsonParser().parse(refmapReader).getAsJsonObject().deepCopy();
+									Files.delete(refmapPath);
+
+									if (refmapElement.has("data")) {
+										JsonObject dataJson = refmapElement.get("data").getAsJsonObject();
+
+										if (dataJson.has("named:intermediary")) {
+											dataJson.add("searge", dataJson.get("named:intermediary").deepCopy());
+											dataJson.remove("named:intermediary");
+										}
+									}
+
+									Files.write(refmapPath, new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create().toJson(refmapElement).getBytes(StandardCharsets.UTF_8));
+								}
+							}
+						} catch (IOException e) {
+							throw new UncheckedIOException(e);
+						}
 					}
 
 					if (getAddNestedDependencies().getOrElse(false)) {
