@@ -25,16 +25,13 @@
 package net.fabricmc.loom.util.srg;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.common.collect.ImmutableMap;
-
+import net.fabricmc.loom.util.JarUtil;
 import net.fabricmc.loom.util.function.CollectionUtil;
 import net.fabricmc.mapping.tree.TinyTree;
 
@@ -44,8 +41,8 @@ import net.fabricmc.mapping.tree.TinyTree;
  * @author Juuz
  */
 public final class AtRemapper {
-	public static void remap(Path jar, TinyTree mappings) throws IOException {
-		try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + jar.toUri()), ImmutableMap.of("create", false))) {
+	public static void remap(Path jar, TinyTree mappings, String targetNamespace) throws IOException {
+		try (FileSystem fs = JarUtil.fs(jar, false)) {
 			Path atPath = fs.getPath("META-INF", "accesstransformer.cfg");
 
 			if (Files.exists(atPath)) {
@@ -65,14 +62,13 @@ public final class AtRemapper {
 					parts[1] = CollectionUtil.find(
 							mappings.getClasses(),
 							def -> def.getName("srg").equals(name)
-					).map(def -> def.getName("named")).orElse(name).replace('/', '.');
+					).map(def -> def.getName(targetNamespace)).orElse(name).replace('/', '.');
 
 					output.add(i, String.join(" ", parts));
 				}
 
 				if (!lines.equals(output)) {
-					Files.delete(atPath);
-					Files.write(atPath, output);
+					JarUtil.write(atPath, output);
 				}
 			}
 		}

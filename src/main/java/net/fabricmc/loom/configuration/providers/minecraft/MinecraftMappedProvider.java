@@ -29,9 +29,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -47,6 +45,7 @@ import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.configuration.providers.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.mappings.MappingsProvider;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.JarUtil;
 import net.fabricmc.loom.util.TinyRemapperMappingsHelper;
 import net.fabricmc.loom.util.srg.AtRemapper;
 import net.fabricmc.loom.util.srg.CoreModClassRemapper;
@@ -149,7 +148,7 @@ public class MinecraftMappedProvider extends DependencyProvider {
 				getProject().getLogger().lifecycle(":running forge finalising tasks");
 
 				// TODO: Relocate this to its own class
-				try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + output.toUri()), ImmutableMap.of("create", false))) {
+				try (FileSystem fs = JarUtil.fs(output, false)) {
 					Path manifestPath = fs.getPath("META-INF", "MANIFEST.MF");
 					Manifest minecraftManifest;
 					Manifest forgeManifest;
@@ -176,8 +175,8 @@ public class MinecraftMappedProvider extends DependencyProvider {
 				}
 
 				TinyTree yarnWithSrg = getExtension().getMappingsProvider().getMappingsWithSrg();
-				AtRemapper.remap(output, yarnWithSrg);
-				CoreModClassRemapper.remapJar(output, yarnWithSrg, getProject().getLogger());
+				AtRemapper.remap(output, yarnWithSrg, toM);
+				CoreModClassRemapper.remapJar(output, yarnWithSrg, getProject().getLogger(), toM);
 			}
 		}
 	}

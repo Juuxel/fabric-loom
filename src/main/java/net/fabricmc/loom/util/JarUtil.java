@@ -24,6 +24,7 @@
 
 package net.fabricmc.loom.util;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -32,6 +33,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
@@ -42,6 +44,10 @@ import com.google.common.collect.ImmutableMap;
  * @author Juuz
  */
 public final class JarUtil {
+	public static FileSystem fs(Path jar, boolean create) throws IOException {
+		return FileSystems.newFileSystem(URI.create("jar:" + jar.toUri()), ImmutableMap.of("create", create));
+	}
+
 	public static void extract(File jar, String filePath, File target) throws IOException {
 		extract(jar.toPath(), ImmutableMap.of(filePath, target.toPath()));
 	}
@@ -51,10 +57,21 @@ public final class JarUtil {
 	}
 
 	public static void extract(Path jar, Map<String, Path> paths) throws IOException {
-		try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + jar.toUri()), ImmutableMap.of("create", false))) {
+		try (FileSystem fs = fs(jar, false)) {
 			for (Map.Entry<String, Path> entry : paths.entrySet()) {
 				Path from = fs.getPath(entry.getKey().replace("/", fs.getSeparator()));
 				Files.copy(from, entry.getValue(), StandardCopyOption.REPLACE_EXISTING);
+			}
+		}
+	}
+
+	public static void write(Path path, List<String> lines) throws IOException {
+		Files.deleteIfExists(path);
+
+		try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+			for (String line : lines) {
+				writer.write(line);
+				writer.write('\n');
 			}
 		}
 	}

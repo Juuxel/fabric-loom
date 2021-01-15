@@ -26,9 +26,7 @@ package net.fabricmc.loom.util.srg;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.net.URI;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -37,12 +35,12 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.gradle.api.logging.Logger;
 
+import net.fabricmc.loom.util.JarUtil;
 import net.fabricmc.loom.util.function.CollectionUtil;
 import net.fabricmc.mapping.tree.TinyTree;
 
@@ -54,8 +52,8 @@ import net.fabricmc.mapping.tree.TinyTree;
 public final class CoreModClassRemapper {
 	private static final Pattern CLASS_NAME_PATTERN = Pattern.compile("^(.*')((?:com\\.mojang\\.|net\\.minecraft\\.)[A-Za-z0-9.-_$]+)('.*)$");
 
-	public static void remapJar(Path jar, TinyTree mappings, Logger logger) throws IOException {
-		try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + jar.toUri()), ImmutableMap.of("create", false))) {
+	public static void remapJar(Path jar, TinyTree mappings, Logger logger, String targetNamespace) throws IOException {
+		try (FileSystem fs = JarUtil.fs(jar, false)) {
 			Path coremodsJsonPath = fs.getPath("META-INF", "coremods.json");
 
 			if (Files.notExists(coremodsJsonPath)) {
@@ -75,7 +73,7 @@ public final class CoreModClassRemapper {
 
 				if (Files.exists(js)) {
 					logger.lifecycle(":remapping coremod '" + file + "'");
-					remap(js, mappings);
+					remap(js, mappings, targetNamespace);
 				} else {
 					logger.warn("Coremod '" + file + "' listed in coremods.json but not found");
 				}
@@ -83,7 +81,7 @@ public final class CoreModClassRemapper {
 		}
 	}
 
-	public static void remap(Path js, TinyTree mappings) throws IOException {
+	public static void remap(Path js, TinyTree mappings, String targetNamespace) throws IOException {
 		List<String> lines = Files.readAllLines(js);
 		List<String> output = new ArrayList<>(lines);
 
@@ -94,7 +92,7 @@ public final class CoreModClassRemapper {
 			if (matcher.matches()) {
 				String className = matcher.group(2).replace('.', '/');
 				String remapped = CollectionUtil.find(mappings.getClasses(), def -> def.getName("srg").equals(className))
-						.map(def -> def.getName("named"))
+						.map(def -> def.getName(targetNamespace))
 						.orElse(className);
 
 				if (!className.equals(remapped)) {
@@ -104,8 +102,7 @@ public final class CoreModClassRemapper {
 		}
 
 		if (!lines.equals(output)) {
-			Files.delete(js);
-			Files.write(js, output);
+			JarUtil.write(js, output);
 		}
 	}
 }

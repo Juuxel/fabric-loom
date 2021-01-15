@@ -26,10 +26,8 @@ package net.fabricmc.loom.util.srg;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -38,7 +36,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.JavaExec;
@@ -46,6 +43,7 @@ import org.gradle.util.GradleVersion;
 import org.zeroturnaround.zip.ZipUtil;
 
 import net.fabricmc.loom.LoomGradleExtension;
+import net.fabricmc.loom.util.JarUtil;
 
 public class SpecialSourceExecutor {
 	public static Path produceSrgJar(Project project, File specialSourceJar, Path officialJar, Path srgPath) throws Exception {
@@ -56,7 +54,7 @@ public class SpecialSourceExecutor {
 		Path stripped = project.getExtensions().getByType(LoomGradleExtension.class).getProjectBuildCache().toPath().resolve(officialJar.getFileName().toString().substring(0, officialJar.getFileName().toString().length() - 3) + "-filtered.jar");
 		Files.deleteIfExists(stripped);
 
-		try (FileSystem strippedFs = FileSystems.newFileSystem(URI.create("jar:" + stripped.toUri()), ImmutableMap.of("create", true))) {
+		try (FileSystem strippedFs = JarUtil.fs(stripped, true)) {
 			ZipUtil.iterate(officialJar.toFile(), (in, zipEntry) -> {
 				if (filter.contains(zipEntry.getName())) {
 					Path path = strippedFs.getPath(zipEntry.getName());

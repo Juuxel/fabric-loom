@@ -203,8 +203,8 @@ public class ModProcessor {
 			}
 
 			if (extension.isForge()) {
-				AtRemapper.remap(info.getRemappedOutput().toPath(), mappings);
-				CoreModClassRemapper.remapJar(info.getRemappedOutput().toPath(), mappings, project.getLogger());
+				AtRemapper.remap(info.getRemappedOutput().toPath(), mappings, toM);
+				CoreModClassRemapper.remapJar(info.getRemappedOutput().toPath(), mappings, project.getLogger(), toM);
 			}
 
 			info.finaliseRemapping();

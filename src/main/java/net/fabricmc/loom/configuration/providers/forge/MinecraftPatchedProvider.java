@@ -29,11 +29,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -43,7 +40,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import com.google.common.collect.ImmutableMap;
 import net.minecraftforge.accesstransformer.TransformerProcessor;
 import net.minecraftforge.binarypatcher.ConsoleTool;
 import org.apache.commons.io.FileUtils;
@@ -281,8 +277,8 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 	}
 
 	private void walkFileSystems(File source, File target, Predicate<Path> filter, Function<FileSystem, Iterable<Path>> toWalk, FsPathConsumer action) throws IOException {
-		try (FileSystem sourceFs = FileSystems.newFileSystem(new URI("jar:" + source.toURI()), ImmutableMap.of("create", false));
-				FileSystem targetFs = FileSystems.newFileSystem(new URI("jar:" + target.toURI()), ImmutableMap.of("create", false))) {
+		try (FileSystem sourceFs = JarUtil.fs(source.toPath(), false);
+				FileSystem targetFs = JarUtil.fs(target.toPath(), false)) {
 			for (Path sourceDir : toWalk.apply(sourceFs)) {
 				Path dir = sourceDir.toAbsolutePath();
 				Files.walk(dir)
@@ -300,8 +296,6 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 							}
 						});
 			}
-		} catch (URISyntaxException e) {
-			throw new IOException(e);
 		}
 	}
 
