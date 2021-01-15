@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -62,6 +63,7 @@ public class RunConfig {
 	public String runDir;
 	public String vmArgs;
 	public String programArgs;
+	public List<String> tasksBeforeRun = new ArrayList<>();
 	public final Map<String, String> envVariables = new HashMap<>();
 
 	public Element genRuns(Element doc) {
@@ -85,6 +87,24 @@ public class RunConfig {
 
 			for (Map.Entry<String, String> envEntry : envVariables.entrySet()) {
 				this.addXml(envs, "env", ImmutableMap.of("name", envEntry.getKey(), "value", envEntry.getValue()));
+			}
+		}
+
+		if (!tasksBeforeRun.isEmpty()) {
+			Element methodElement = this.addXml(root, "method", ImmutableMap.of("v", "2"));
+
+			this.addXml(methodElement, "option", ImmutableMap.of("name", "Make", "enabled", "true"));
+			for (String s : tasksBeforeRun) {
+				String project = s.substring(0, s.lastIndexOf(':'));
+				String task = s.substring(s.lastIndexOf(':') + 1);
+				this.addXml(methodElement, "option", ImmutableMap.<String, String>builder()
+						.put("name", "Gradle.BeforeRunTask")
+						.put("enabled", "true")
+						.put("tasks", task)
+						.put("externalProjectPath", project)
+						.put("vmOptions", "")
+						.put("scriptParameters", "")
+						.build());
 			}
 		}
 
@@ -188,6 +208,7 @@ public class RunConfig {
 		populate(project, extension, ideaClient, "client");
 		ideaClient.vmArgs += getOSClientJVMArgs();
 		ideaClient.vmArgs += " -Dfabric.dli.main=" + getMainClass("client", extension);
+		ideaClient.tasksBeforeRun = new ArrayList<>(extension.getTasksBeforeRun());
 
 		return ideaClient;
 	}
@@ -200,6 +221,7 @@ public class RunConfig {
 		ideaServer.programArgs = "nogui ";
 		populate(project, extension, ideaServer, "server");
 		ideaServer.vmArgs += " -Dfabric.dli.main=" + getMainClass("server", extension);
+		ideaServer.tasksBeforeRun = new ArrayList<>(extension.getTasksBeforeRun());
 
 		return ideaServer;
 	}
@@ -242,6 +264,16 @@ public class RunConfig {
 		}
 
 		dummyConfig = dummyConfig.replace("%ENVS%", envs);
+
+		StringBuilder tasksToRun = new StringBuilder();
+
+		for (String s : tasksBeforeRun) {
+			String project = s.substring(0, s.lastIndexOf(':'));
+			String task = s.substring(s.lastIndexOf(':') + 1);
+			tasksToRun.append(" <option name=\"Gradle.BeforeRunTask\" enabled=\"true\" tasks=\"").append(task).append("\" externalProjectPath=\"").append(project).append("\" vmOptions=\"\" scriptParameters=\"\" />");
+		}
+
+		dummyConfig = dummyConfig.replace("%TASKS%", tasksToRun.toString());
 
 		return dummyConfig;
 	}

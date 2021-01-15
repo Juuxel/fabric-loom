@@ -91,6 +91,7 @@ public class LoomGradleExtension {
 	private Mercury[] srcMercuryCache = new Mercury[2];
 	private final LazyBool forge;
 	private Set<File> mixinMappings = Collections.synchronizedSet(new HashSet<>());
+	private final List<String> tasksBeforeRun = Collections.synchronizedList(new ArrayList<>());
 
 	/**
 	 * Loom will generate a new genSources task (with a new name, based off of {@link LoomDecompiler#name()})
@@ -117,6 +118,16 @@ public class LoomGradleExtension {
 
 	public Mercury getOrCreateSrcMercuryCache(int id, Supplier<Mercury> factory) {
 		return srcMercuryCache[id] != null ? srcMercuryCache[id] : (srcMercuryCache[id] = factory.get());
+	}
+
+	public void addTaskBeforeRun(String task) {
+		synchronized(this.tasksBeforeRun) {
+			this.tasksBeforeRun.add(task);
+		}
+	}
+
+	public List<String> getTasksBeforeRun() {
+		return tasksBeforeRun;
 	}
 
 	public Dependency officialMojangMappings() {
