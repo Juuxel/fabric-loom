@@ -77,7 +77,7 @@ public class ModCompileRemapper {
 				String name = artifact.getModuleVersion().getId().getName();
 				String version = artifact.getModuleVersion().getId().getVersion();
 
-				if (!shouldRemapMod(logger, artifact, extension.isForge())) {
+				if (!shouldRemapMod(logger, artifact, extension.isForge(), sourceConfig.getName())) {
 					addToRegularCompile(project, regularConfig, artifact);
 					continue;
 				}
@@ -90,7 +90,7 @@ public class ModCompileRemapper {
 
 				modDependencies.add(info);
 
-				String remappedLog = group + ":" + name + ":" + version + (artifact.getClassifier() == null ? "" : ":" + artifact.getClassifier()) + " (" + mappingsSuffix + ")";
+				String remappedLog = group + ":" + name + ":" + version + (artifact.getClassifier() == null ? "" : ":" + artifact.getClassifier()) + " (" + mappingsSuffix + ")" + (info.requiresRemapping() ? " requires remapping" : " already remapped in " + info.getRemappedOutput().getAbsolutePath());
 				project.getLogger().info(":providing " + remappedLog);
 
 				File remappedSources = info.getRemappedOutput("sources");
@@ -114,26 +114,30 @@ public class ModCompileRemapper {
 
 			// Add all of the remapped mods onto the config
 			for (ModDependencyInfo info : modDependencies) {
+				project.getLogger().info(":adding " + info.toString() + " into " + info.targetConfig.getName());
 				project.getDependencies().add(info.targetConfig.getName(), info.getRemappedNotation());
 			}
 		}
 	}
 
 	/**
-	 * Checks if an artifact is a fabric or forge mod, according to the presence of a fabric.mod.json.
+	 * Checks if an artifact is a fabric or forge mod, according to the presence of a fabric.mod.json or mods.toml.
 	 */
-	private static boolean shouldRemapMod(Logger logger, ResolvedArtifact artifact, boolean forge) {
+	private static boolean shouldRemapMod(Logger logger, ResolvedArtifact artifact, boolean forge, String config) {
 		File input = artifact.getFile();
 
 		try (ZipFile zipFile = new ZipFile(input)) {
 			if (forge) {
 				if (zipFile.getEntry("META-INF/mods.toml") != null) {
-					logger.info("Found Forge mod in modCompile: {}", artifact.getId());
+					logger.info("Found Forge mod in " + config + ": {}", artifact.getId());
 					return true;
 				}
+
+				logger.lifecycle(":could not find forge mod in " + config + " but forcing: {}", artifact.getId());
+				return true;
 			} else {
 				if (zipFile.getEntry("fabric.mod.json") != null) {
-					logger.info("Found Fabric mod in modCompile: {}", artifact.getId());
+					logger.info("Found Fabric mod in " + config + ": {}", artifact.getId());
 					return true;
 				}
 			}
