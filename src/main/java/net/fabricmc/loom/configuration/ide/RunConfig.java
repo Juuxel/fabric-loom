@@ -92,8 +92,8 @@ public class RunConfig {
 
 		if (!tasksBeforeRun.isEmpty()) {
 			Element methodElement = this.addXml(root, "method", ImmutableMap.of("v", "2"));
-
 			this.addXml(methodElement, "option", ImmutableMap.of("name", "Make", "enabled", "true"));
+
 			for (String s : tasksBeforeRun) {
 				String project = s.substring(0, s.lastIndexOf(':'));
 				String task = s.substring(s.lastIndexOf(':') + 1);

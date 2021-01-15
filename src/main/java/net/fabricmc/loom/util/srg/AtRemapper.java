@@ -31,6 +31,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
+import org.gradle.api.logging.Logger;
+
 import net.fabricmc.loom.util.JarUtil;
 import net.fabricmc.loom.util.function.CollectionUtil;
 import net.fabricmc.mapping.tree.TinyTree;
@@ -41,7 +44,7 @@ import net.fabricmc.mapping.tree.TinyTree;
  * @author Juuz
  */
 public final class AtRemapper {
-	public static void remap(Path jar, TinyTree mappings, String targetNamespace) throws IOException {
+	public static void remap(Logger logger, Path jar, TinyTree mappings, String targetNamespace) throws IOException {
 		try (FileSystem fs = JarUtil.fs(jar, false)) {
 			Path atPath = fs.getPath("META-INF", "accesstransformer.cfg");
 
@@ -52,12 +55,19 @@ public final class AtRemapper {
 				for (int i = 0; i < lines.size(); i++) {
 					String line = lines.get(i).trim();
 
-					if (line.startsWith("#")) {
+					if (line.startsWith("#") || StringUtils.isBlank(line)) {
 						output.add(i, line);
 						continue;
 					}
 
 					String[] parts = line.split(" ");
+
+					if (parts.length < 2) {
+						logger.warn("Invalid AT Line: " + line);
+						output.add(i, line);
+						continue;
+					}
+
 					String name = parts[1].replace('.', '/');
 					parts[1] = CollectionUtil.find(
 							mappings.getClasses(),
