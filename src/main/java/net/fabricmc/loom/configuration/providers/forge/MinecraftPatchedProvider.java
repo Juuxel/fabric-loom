@@ -59,6 +59,7 @@ import org.objectweb.asm.tree.ClassNode;
 
 import net.fabricmc.loom.configuration.DependencyProvider;
 import net.fabricmc.loom.configuration.providers.MinecraftProvider;
+import net.fabricmc.loom.configuration.providers.mappings.MappingsProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMappedProvider;
 import net.fabricmc.loom.util.Checksum;
 import net.fabricmc.loom.util.Constants;
@@ -75,6 +76,7 @@ import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
 
 public class MinecraftPatchedProvider extends DependencyProvider {
+	private final MappingsProvider mappingsProvider;
 	private File minecraftClientSrgJar;
 	private File minecraftServerSrgJar;
 	private File minecraftClientPatchedSrgJar;
@@ -87,8 +89,9 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 	private Path projectAt = null;
 	private boolean atDirty = false;
 
-	public MinecraftPatchedProvider(Project project) {
+	public MinecraftPatchedProvider(MappingsProvider mappingsProvider, Project project) {
 		super(project);
+		this.mappingsProvider = mappingsProvider;
 	}
 
 	@Override
@@ -204,8 +207,6 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 	}
 
 	private void createSrgJars(Logger logger) throws Exception {
-		logger.lifecycle(":remapping minecraft (SpecialSource, official -> srg)");
-
 		McpConfigProvider mcpProvider = getExtension().getMcpConfigProvider();
 		MinecraftProvider minecraftProvider = getExtension().getMinecraftProvider();
 
@@ -214,8 +215,8 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 		DownloadUtil.downloadIfChanged(new URL("https://repo1.maven.org/maven2/net/md-5/SpecialSource/1.8.3/SpecialSource-1.8.3-shaded.jar"), specialSourceJar, getProject().getLogger(), true);
 
 		ThreadingUtils.run(
-				() -> Files.copy(SpecialSourceExecutor.produceSrgJar(getProject(), specialSourceJar, minecraftProvider.minecraftClientJar.toPath(), srg), minecraftClientSrgJar.toPath()),
-				() -> Files.copy(SpecialSourceExecutor.produceSrgJar(getProject(), specialSourceJar, minecraftProvider.minecraftServerJar.toPath(), srg), minecraftServerSrgJar.toPath())
+				() -> Files.copy(SpecialSourceExecutor.produceSrgJar(getProject(), mappingsProvider, "client", specialSourceJar, minecraftProvider.minecraftClientJar.toPath(), srg), minecraftClientSrgJar.toPath()),
+				() -> Files.copy(SpecialSourceExecutor.produceSrgJar(getProject(), mappingsProvider, "server", specialSourceJar, minecraftProvider.minecraftServerJar.toPath(), srg), minecraftServerSrgJar.toPath())
 		);
 	}
 
@@ -268,7 +269,7 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 			FileUtils.copyInputStreamToFile(in, injection);
 		}
 
-		ThreadingUtils.run(Arrays.asList(Environment.values()), environment -> {
+		for (Environment environment : Environment.values()) {
 			String side = environment.side();
 			File target = environment.patchedSrgJar.apply(this);
 
@@ -294,7 +295,7 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 			}
 
 			TransformerProcessor.main(args);
-		});
+		}
 	}
 
 	private enum Environment {

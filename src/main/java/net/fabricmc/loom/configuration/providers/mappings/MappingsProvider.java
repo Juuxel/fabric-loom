@@ -203,8 +203,7 @@ public class MappingsProvider extends DependencyProvider {
 		processorManager.setupProcessors();
 
 		if (extension.isForge()) {
-			patchedProvider = new MinecraftPatchedProvider(getProject());
-			patchedProvider.provide(dependency, postPopulationScheduler);
+			patchedProvider = new MinecraftPatchedProvider(this, getProject());
 		}
 
 		if (processorManager.active() || (extension.isForge() && patchedProvider.usesProjectCache())) {
@@ -212,6 +211,10 @@ public class MappingsProvider extends DependencyProvider {
 			getProject().getLogger().lifecycle("Using project based jar storage");
 		} else {
 			mappedProvider = new MinecraftMappedProvider(getProject());
+		}
+
+		if (extension.isForge()) {
+			patchedProvider.provide(dependency, postPopulationScheduler);
 		}
 
 		mappedProvider.initFiles(minecraftProvider, this);
