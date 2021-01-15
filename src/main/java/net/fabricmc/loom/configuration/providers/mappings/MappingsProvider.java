@@ -186,7 +186,7 @@ public class MappingsProvider extends DependencyProvider {
 			}
 
 			if (!srgToNamedSrg.exists() || isRefreshDeps()) {
-				SrgNamedWriter.writeTo(getProject().getLogger(), srgToNamedSrg.toPath(), getMappingsWithSrg());
+				SrgNamedWriter.writeTo(getProject().getLogger(), srgToNamedSrg.toPath(), getMappingsWithSrg(), "from", "to");
 			}
 		}
 
