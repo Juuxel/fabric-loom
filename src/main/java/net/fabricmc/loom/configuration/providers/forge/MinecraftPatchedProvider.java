@@ -397,6 +397,8 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 	}
 
 	private void remapPatchedJars(Logger logger) {
+		Path[] remapClasspath = MinecraftMappedProvider.getRemapClasspath(getProject());
+
 		ThreadingUtils.run(Arrays.asList(Environment.values()), environment -> {
 			logger.lifecycle(":remapping minecraft (TinyRemapper, " + environment.side() + ", srg -> official)");
 			TinyTree mappingsWithSrg = getExtension().getMappingsProvider().getMappingsWithSrg();
@@ -417,7 +419,7 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 			try (OutputConsumerPath outputConsumer = new OutputConsumerPath.Builder(output).build()) {
 				outputConsumer.addNonClassFiles(input);
 
-				remapper.readClassPath(MinecraftMappedProvider.getRemapClasspath(getProject()));
+				remapper.readClassPath(remapClasspath);
 				remapper.readInputs(input);
 				remapper.apply(outputConsumer);
 			} finally {
