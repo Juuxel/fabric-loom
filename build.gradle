@@ -30,13 +30,14 @@ if (ENV.BUILD_NUMBER) {
 }
 
 configurations {
-	forgeInjectShadow
-	forgeInjectCompileClasspath.extendsFrom(forgeInjectShadow)
-	forgeInjectRuntimeClasspath.extendsFrom(forgeInjectShadow)
+	forgeRuntimeInjectShadow
+	forgeRuntimeInjectCompileClasspath.extendsFrom(forgeRuntimeInjectShadow)
+	forgeRuntimeInjectRuntimeClasspath.extendsFrom(forgeRuntimeInjectShadow)
 }
 
 sourceSets {
-	forgeInject
+	forgeCompileInject
+	forgeRuntimeInject
 }
 
 repositories {
@@ -100,12 +101,12 @@ dependencies {
 	implementation ('de.oceanlabs.mcp:mcinjector:3.8.0')
 
 	// Forge injection
-	forgeInjectShadow ('net.fabricmc:tiny-mappings-parser:0.2.2.14')
-	forgeInjectImplementation ('cpw.mods:modlauncher:6.1.3')
-	forgeInjectImplementation ('org.spongepowered:mixin:0.8.2')
-	forgeInjectImplementation ('com.google.code.gson:gson:2.8.6')
-	forgeInjectImplementation ('com.google.guava:guava:21.0')
-	forgeInjectImplementation ('org.apache.logging.log4j:log4j-api:2.11.2')
+	forgeRuntimeInjectShadow ('net.fabricmc:tiny-mappings-parser:0.2.2.14')
+	forgeRuntimeInjectImplementation ('cpw.mods:modlauncher:6.1.3')
+	forgeRuntimeInjectImplementation ('org.spongepowered:mixin:0.8.2')
+	forgeRuntimeInjectImplementation ('com.google.code.gson:gson:2.8.6')
+	forgeRuntimeInjectImplementation ('com.google.guava:guava:21.0')
+	forgeRuntimeInjectImplementation ('org.apache.logging.log4j:log4j-api:2.11.2')
 
 	// Testing
 	testImplementation(gradleTestKit())
@@ -117,19 +118,30 @@ dependencies {
 
 }
 
-task forgeInjectJar(type: com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar, dependsOn: [compileForgeInjectJava, processForgeInjectResources]) {
-	configurations = [project.configurations.forgeInjectShadow]
-	classifier = 'forgeinject'
-	from compileForgeInjectJava.outputs
-	from processForgeInjectResources.outputs
+task forgeCompileInjectJar(type: Jar, dependsOn: [compileForgeCompileInjectJava, processForgeCompileInjectResources]) {
+	classifier = 'forgecompileinject'
+	from compileForgeCompileInjectJava.outputs
+	from processForgeCompileInjectResources.outputs
+}
+
+task forgeRuntimeInjectJar(type: com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar, dependsOn: [compileForgeRuntimeInjectJava, processForgeRuntimeInjectResources]) {
+	configurations = [project.configurations.forgeRuntimeInjectShadow]
+	classifier = 'forgeruntimeinject'
+	from compileForgeRuntimeInjectJava.outputs
+	from processForgeRuntimeInjectResources.outputs
 }
 
 jar {
-	dependsOn forgeInjectJar
+	dependsOn forgeCompileInjectJar, forgeRuntimeInjectJar
 
-	from(forgeInjectJar.outputs) {
-		into "inject"
-		rename { "injection.jar" }
+	from(forgeRuntimeInjectJar.outputs) {
+		into "net/fabricmc/loom/inject"
+		rename { "runtime.jar" }
+	}
+
+	from(forgeCompileInjectJar.outputs) {
+		into "net/fabricmc/loom/inject"
+		rename { "compile.jar" }
 	}
 
 	manifest {

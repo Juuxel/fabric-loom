@@ -299,7 +299,7 @@ public class MinecraftPatchedProvider extends DependencyProvider {
 		// Extract injection jar
 		File injection = File.createTempFile("loom-injection", ".jar");
 
-		try (InputStream in = MinecraftProvider.class.getResourceAsStream("/inject/injection.jar")) {
+		try (InputStream in = MinecraftProvider.class.getResourceAsStream(Constants.Forge.INJECTION_JAR_PATH)) {
 			FileUtils.copyInputStreamToFile(in, injection);
 		}
 

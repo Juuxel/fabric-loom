@@ -146,6 +146,7 @@ public class Constants {
 
 	public static final class Forge {
 		public static final String SRG_LOCATION_FALLBACK = "config/joined.tsrg";
+		public static final String INJECTION_JAR_PATH = "/net/fabricmc/loom/inject/injection.jar";
 
 		private Forge() {
 		}
