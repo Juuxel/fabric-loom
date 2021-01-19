@@ -6,7 +6,7 @@ package net.fabricmc.loom
 static String genBuildFile(String mappingsDep = "\"net.fabricmc:yarn:\${project.yarn_mappings}\"") {
 	"""
 plugins {
-	id 'fabric-loom'
+	id 'io.github.juuxel.fabric-loom'
 	id 'maven-publish'
 }
 sourceCompatibility = JavaVersion.VERSION_1_8
