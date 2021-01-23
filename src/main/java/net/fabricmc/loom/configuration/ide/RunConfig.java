@@ -33,6 +33,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -42,8 +46,6 @@ import com.google.gson.JsonObject;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
-import org.gradle.api.plugins.JavaPluginConvention;
-import org.gradle.api.tasks.SourceSet;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -54,7 +56,7 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.OperatingSystem;
 
 public class RunConfig {
-	private static final String FORGE_MOD_CLASSES_PREFIX = "loom%%";
+	private static final String FORGE_MOD_CLASSES_SEPARATOR = "%%";
 
 	public String configName;
 	public String eclipseProjectName;
@@ -154,19 +156,19 @@ public class RunConfig {
 		}
 
 		if (extension.isForge()) {
-			StringBuilder modClasses = new StringBuilder();
-			SourceSet main = project.getConvention().getPlugin(JavaPluginConvention.class).getSourceSets().getByName("main");
+			String modClasses = extension.forgeLocalMods.stream().map(Supplier::get)
+					.flatMap(sourceSet -> {
+						String sourceSetName = sourceSet.getName() + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 7);
+						Stream.Builder<File> directories = Stream.builder();
 
-			modClasses.append(FORGE_MOD_CLASSES_PREFIX);
-			modClasses.append(main.getOutput().getResourcesDir().getAbsolutePath());
+						directories.add(sourceSet.getOutput().getResourcesDir());
+						sourceSet.getOutput().getClassesDirs().forEach(directories);
 
-			for (File classes : main.getOutput().getClassesDirs()) {
-				modClasses.append(File.pathSeparator);
-				modClasses.append(FORGE_MOD_CLASSES_PREFIX);
-				modClasses.append(classes.getAbsolutePath());
-			}
+						return directories.build().map(File::getAbsolutePath)
+								.map(path -> sourceSetName + FORGE_MOD_CLASSES_SEPARATOR + path);
+					}).collect(Collectors.joining(File.pathSeparator));
 
-			runConfig.envVariables.put("MOD_CLASSES", modClasses.toString());
+			runConfig.envVariables.put("MOD_CLASSES", modClasses);
 		}
 
 		if (extension.getLoaderLaunchMethod().equals("launchwrapper")) {
