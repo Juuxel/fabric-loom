@@ -83,6 +83,7 @@ public class LoomGradleExtension {
 	public String mixinConfig = null; // FORGE: Passed to Minecraft
 	public List<String> mixinConfigs = null; // FORGE: Passed to Minecraft
 	public boolean useFabricMixin = false; // FORGE: Use Fabric Mixin for better refmap resolutions
+	public boolean platformNameInRunConfig = false; // FORGE: Can be used to append (Forge) or (Fabric) to the IDEA run config names
 
 	private final ConfigurableFileCollection unmappedMods;
 
@@ -486,6 +487,10 @@ public class LoomGradleExtension {
 
 	public boolean isForge() {
 		return forge.getAsBoolean();
+	}
+
+	public String getPlatformName() {
+		return isForge() ? "Forge" : "Fabric";
 	}
 
 	// Creates a new file each time its called, this is then held onto later when remapping the output jar

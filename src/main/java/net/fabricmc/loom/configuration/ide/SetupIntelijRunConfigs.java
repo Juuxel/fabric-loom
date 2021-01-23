@@ -69,11 +69,16 @@ public class SetupIntelijRunConfigs {
 		}
 
 		String projectPath = project == rootProject ? "" : project.getPath().replace(':', '_');
+		String platform = "";
+
+		if (extension.platformNameInRunConfig) {
+			platform = "_" + extension.getPlatformName();
+		}
 
 		File projectDir = rootProject.file(".idea");
 		File runConfigsDir = new File(projectDir, "runConfigurations");
-		File clientRunConfigs = new File(runConfigsDir, "Minecraft_Client" + projectPath + ".xml");
-		File serverRunConfigs = new File(runConfigsDir, "Minecraft_Server" + projectPath + ".xml");
+		File clientRunConfigs = new File(runConfigsDir, "Minecraft_Client" + projectPath + platform + ".xml");
+		File serverRunConfigs = new File(runConfigsDir, "Minecraft_Server" + projectPath + platform + ".xml");
 
 		if (!runConfigsDir.exists()) {
 			runConfigsDir.mkdirs();

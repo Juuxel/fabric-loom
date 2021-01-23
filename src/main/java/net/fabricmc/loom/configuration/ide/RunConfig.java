@@ -141,6 +141,10 @@ public class RunConfig {
 	}
 
 	private static void populate(Project project, LoomGradleExtension extension, RunConfig runConfig, String mode) {
+		if (extension.platformNameInRunConfig) {
+			runConfig.configName += " [" + extension.getPlatformName() + "]";
+		}
+
 		runConfig.configName += extension.isRootProject() ? "" : " (" + project.getPath() + ")";
 		runConfig.eclipseProjectName = project.getExtensions().getByType(EclipseModel.class).getProject().getName();
 		runConfig.ideaModuleName = getIdeaModuleName(project);
