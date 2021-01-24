@@ -142,6 +142,7 @@ public class MinecraftMappedProvider extends DependencyProvider {
 
 		ExecutorService executor = Executors.newFixedThreadPool(Math.min(10, Math.max(Runtime.getRuntime().availableProcessors() / 2, 1)));
 		List<Future<?>> futures = new LinkedList<>();
+		Path[] remapClasspath = getRemapClasspath();
 
 		for (String toM : (getExtension().isForge() ? Arrays.asList("named", "intermediary", "srg") : Arrays.asList("named", "intermediary"))) {
 			futures.add(executor.submit(() -> {
@@ -159,7 +160,7 @@ public class MinecraftMappedProvider extends DependencyProvider {
 							outputConsumer.addNonClassFiles(input);
 						}
 
-						remapper.readClassPath(getRemapClasspath());
+						remapper.readClassPath(remapClasspath);
 						remapper.readInputs(input);
 						remapper.apply(outputConsumer);
 					} catch (Exception e) {
