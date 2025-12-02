@@ -102,7 +102,7 @@ import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 
 public class MinecraftPatchedProvider {
 	private static final String LOOM_PATCH_VERSION_KEY = "Loom-Patch-Version";
-	private static final String CURRENT_LOOM_PATCH_VERSION = "9";
+	private static final String CURRENT_LOOM_PATCH_VERSION = "10";
 	private static final String NAME_MAPPING_SERVICE_PATH = "/inject/META-INF/services/cpw.mods.modlauncher.api.INameMappingService";
 
 	private static final String NEOFORGE_MANUAL_CLEAR_JAR_CREATION_VERSION = "21.10.57-beta";
@@ -477,7 +477,6 @@ public class MinecraftPatchedProvider {
 		TinyRemapper remapper = buildRemapper(serviceFactory, mcInput);
 
 		try (OutputConsumerPath outputConsumer = new OutputConsumerPath.Builder(mcOutput).build()) {
-			outputConsumer.addNonClassFiles(mcInput);
 			outputConsumer.addNonClassFiles(forgeJar, NonClassCopyMode.FIX_META_INF, remapper);
 
 			InputTag mcTag = remapper.createInputTag();
