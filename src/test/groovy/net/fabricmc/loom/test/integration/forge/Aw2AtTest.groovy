@@ -40,7 +40,7 @@ class Aw2AtTest extends Specification implements GradleProjectTestTrait {
 		// 1.17+ uses a new srg naming pattern
 		setup:
 		def gradle = gradleProject(project: "forge/aw2At", version: DEFAULT_GRADLE)
-		gradle.buildGradle.text = gradle.buildGradle.text.replace('AW2AT_CODE', code)
+		gradle.buildGradle.text = gradle.buildGradle.text.replace('AW2AT_CODE', code);
 
 		when:
 		def result = gradle.run(task: "build")

@@ -36,6 +36,7 @@ class Forge1206Test extends Specification implements GradleProjectTestTrait {
 	@Unroll
 	def "build #mcVersion #forgeVersion #mappings #patches"() {
 		if (Integer.valueOf(System.getProperty("java.version").split("\\.")[0]) < 21) {
+
 			println("This test requires Java 21. Currently you have Java ${System.getProperty("java.version")}.")
 			return
 		}
