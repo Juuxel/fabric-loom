@@ -41,7 +41,7 @@ import net.fabricmc.loom.util.ZipUtils
 class ZipUtilsTest extends Specification {
 	def "pack"() {
 		given:
-		def dir = File.createTempDir()
+		def dir = File.createTempDir();
 		def zip = File.createTempFile("loom-zip-test", ".zip").toPath()
 		new File(dir, "test.txt").text = "This is a test of packing"
 

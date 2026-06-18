@@ -40,7 +40,7 @@ class Aw2AtTest extends Specification {
 		at.access == AccessChange.PUBLIC
 		// AW makes previously private methods also final, but this cannot be replicated
 		// using Forge AT.
-		at.final == ModifierChange.NONE
+		at.final == ModifierChange.NONE;
 	}
 
 	def "test extendable"() {
